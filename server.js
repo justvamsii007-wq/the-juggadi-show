@@ -10,139 +10,107 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-/*
-  THE JUGGADI SHOW
-  2–4 PLAYER REALTIME QUIZ
-
-  Categories:
-  - Indian Cinema
-  - Famous Indian Places
-  - Famous Indian Personalities
-  - Indian pop culture
-
-  Questions are clue-based / medium difficulty.
-*/
-
 const QUESTIONS = [
-
   {
     q: 'ఈ దర్శకుడి సినిమాల్లో "Eega", "Baahubali", "RRR" ఉన్నాయి. అతను ఎవరు?',
     options: ['Sukumar', 'S. S. Rajamouli', 'Trivikram Srinivas', 'Koratala Siva'],
     a: 1
   },
-
   {
     q: 'ఒక సినిమాలో హీరో పేరు "Pushpa Raj". ఆ పాత్రకు famous అయిన నటుడు ఎవరు?',
     options: ['Prabhas', 'Ram Charan', 'Allu Arjun', 'Nani'],
     a: 2
   },
-
   {
-    q: '"Mahanati" సినిమాలో ప్రధానంగా portray చేసిన legendary actress ఎవరు?',
-    options: ['Savitri', 'Jamuna', 'Bhanumathi', 'Anjali Devi'],
+    q: '"Mahanati" సినిమాలో legendary actress పాత్రను ఎవరు పోషించారు?',
+    options: ['Keerthy Suresh', 'Samantha', 'Anushka Shetty', 'Sai Pallavi'],
     a: 0
   },
-
   {
-    q: '"RRR"లో ఇద్దరు main characters లో ఒకరు Komaram Bheem. మరొకరి పేరు?',
-    options: ['Alluri Sitarama Raju', 'Rama Raju', 'Rudra', 'Bheem Raju'],
+    q: '"RRR"లో Ram Charan పోషించిన పాత్ర పేరు ఏమిటి?',
+    options: ['Komaram Bheem', 'Rama Raju', 'Devaratha', 'Rudra'],
     a: 1
   },
-
+  {
+    q: '"Jersey" సినిమాలో cricket dream కోసం మళ్లీ bat పట్టుకునే character ని ఎవరు చేశారు?',
+    options: ['Nani', 'Vijay Deverakonda', 'Sharwanand', 'Adivi Sesh'],
+    a: 0
+  },
   {
     q: 'ఒక Telugu actor "Arjun Reddy", "Geetha Govindam", "Dear Comrade" సినిమాలతో గుర్తింపు పొందాడు. ఎవరు?',
     options: ['Nani', 'Vijay Deverakonda', 'Sharwanand', 'Adivi Sesh'],
     a: 1
   },
-
   {
-    q: '"Jersey" సినిమాలో cricket మీద తన dream ని మళ్లీ pursue చేసే character ని ఎవరు చేశారు?',
-    options: ['Nani', 'Ram Charan', 'Dulquer Salmaan', 'Naga Chaitanya'],
+    q: '"Baahubali"లో Bhallaladeva పాత్రను చేసిన actor ఎవరు?',
+    options: ['Prabhas', 'Rana Daggubati', 'Sathyaraj', 'Nassar'],
+    a: 1
+  },
+  {
+    q: '"Pushpa", "Rangasthalam", "Arya" సినిమాలకు దర్శకత్వం వహించిన director ఎవరు?',
+    options: ['Sukumar', 'Trivikram', 'Koratala Siva', 'Vamshi Paidipally'],
     a: 0
   },
-
   {
-    q: 'ఈ నటుడు "Baahubali"లో Amarendra Baahubali, "Salaar"లో Deva పాత్రల్లో కనిపించాడు. ఎవరు?',
-    options: ['Prabhas', 'Rana Daggubati', 'Nani', 'Mahesh Babu'],
-    a: 0
-  },
-
-  {
-    q: 'ఒకే నటుడు "Rangasthalam"లో Chitti Babuగా, "RRR"లో Alluri Sitarama Rajuగా కనిపించాడు. ఎవరు?',
+    q: 'ఒకే actor "Rangasthalam"లో Chitti Babuగా, "RRR"లో Alluri Sitarama Rajuగా కనిపించాడు. ఎవరు?',
     options: ['Jr NTR', 'Ram Charan', 'Ravi Teja', 'Varun Tej'],
     a: 1
   },
-
   {
-    q: '"Ala Vaikunthapurramuloo" సినిమాలో "Butta Bomma" పాటతో కూడా గుర్తింపు పొందిన హీరో ఎవరు?',
+    q: '"Ala Vaikunthapurramuloo"లో "Butta Bomma" పాటతో కూడా famous అయిన hero ఎవరు?',
     options: ['Allu Arjun', 'Nani', 'Ram Charan', 'Vijay Deverakonda'],
     a: 0
   },
 
   {
-    q: 'ఒక Telugu director "Arya", "Rangasthalam", "Pushpa" సినిమాలకు దర్శకత్వం వహించాడు. ఎవరు?',
-    options: ['Sukumar', 'Vamshi Paidipally', 'Boyapati Srinu', 'Harish Shankar'],
-    a: 0
-  },
-
-  {
-    q: 'Indiaలో ఒక monument ప్రేమకు symbolగా ప్రపంచవ్యాప్తంగా famous. అది ఏది?',
+    q: 'ప్రపంచవ్యాప్తంగా ప్రేమకు symbolగా famous అయిన Agra monument ఏది?',
     options: ['Charminar', 'Taj Mahal', 'Gateway of India', 'India Gate'],
     a: 1
   },
-
   {
-    q: 'Mumbaiలో సముద్రం వైపు కనిపించే iconic arch monument ఏది?',
+    q: 'Mumbaiలో sea-facing iconic arch monument ఏది?',
     options: ['India Gate', 'Gateway of India', 'Charminar', 'Victoria Memorial'],
     a: 1
   },
-
   {
-    q: 'Hyderabadకి సంబంధించిన ఈ monumentకి నాలుగు minarets ఉన్నాయి. ఏది?',
-    options: ['Golconda Fort', 'Charminar', 'Qutb Minar', 'India Gate'],
+    q: 'Four minarets వల్ల Hyderabad identityగా మారిన monument ఏది?',
+    options: ['Golconda Fort', 'Charminar', 'Qutub Minar', 'India Gate'],
     a: 1
   },
-
-  {
-    q: 'Delhiలో Indian soldiers జ్ఞాపకార్థంగా famous అయిన monument ఏది?',
-    options: ['India Gate', 'Gateway of India', 'Charminar', 'Sanchi Stupa'],
-    a: 0
-  },
-
-  {
-    q: 'Agraలో ఉన్న ఈ monument Mughal emperor Shah Jahanతో strongly associated. ఏది?',
-    options: ['Red Fort', 'Taj Mahal', 'Hawa Mahal', 'Golconda Fort'],
-    a: 1
-  },
-
-  {
-    q: 'Kolkataలో ఉన్న ఈ white marble monument ఒక British-era memorialగా famous. ఏది?',
-    options: ['Victoria Memorial', 'India Gate', 'Mysore Palace', 'Charminar'],
-    a: 0
-  },
-
   {
     q: 'Rajasthanలో pink colour వల్ల "Pink City"గా famous అయిన city ఏది?',
     options: ['Udaipur', 'Jaipur', 'Jodhpur', 'Bikaner'],
     a: 1
   },
-
   {
-    q: 'Keralaలో backwaters, houseboatsకి particularly famous అయిన destination ఏది?',
+    q: 'Rajasthanలో blue-coloured old city buildings వల్ల "Blue City"గా famous అయిన city ఏది?',
+    options: ['Jaipur', 'Jaisalmer', 'Jodhpur', 'Udaipur'],
+    a: 2
+  },
+  {
+    q: 'Keralaలో backwaters, houseboats కోసం famous destination ఏది?',
     options: ['Alappuzha', 'Mysuru', 'Amritsar', 'Jaisalmer'],
     a: 0
   },
-
   {
-    q: 'Karnatakaలో royal palace మరియు Dasara celebrationsకి famous అయిన city ఏది?',
+    q: 'Golden Temple ఉన్న famous Indian city ఏది?',
+    options: ['Ludhiana', 'Amritsar', 'Patiala', 'Chandigarh'],
+    a: 1
+  },
+  {
+    q: 'Tea plantations మరియు cool climate కోసం Keralaలో famous hill station ఏది?',
+    options: ['Munnar', 'Varkala', 'Kochi', 'Kollam'],
+    a: 0
+  },
+  {
+    q: 'Karnatakaలో royal palace మరియు Dasara celebrationsకి famous city ఏది?',
     options: ['Mysuru', 'Pune', 'Surat', 'Lucknow'],
     a: 0
   },
-
   {
-    q: 'Punjabలో Golden Temple ఉన్న famous city ఏది?',
-    options: ['Ludhiana', 'Amritsar', 'Patiala', 'Chandigarh'],
-    a: 1
+    q: 'Delhiలో tall towerలా కనిపించే famous historical monument ఏది?',
+    options: ['Qutub Minar', 'Charminar', 'India Gate', 'Lotus Temple'],
+    a: 0
   },
 
   {
@@ -150,64 +118,151 @@ const QUESTIONS = [
     options: ['C. V. Raman', 'A. P. J. Abdul Kalam', 'Homi Bhabha', 'Vikram Sarabhai'],
     a: 1
   },
-
   {
-    q: 'Indiaకి first individual Olympic gold medal సాధించిన athleteగా famous అయిన shooter ఎవరు?',
+    q: 'Indiaకి first individual Olympic gold medal సాధించిన shooter ఎవరు?',
     options: ['Abhinav Bindra', 'Neeraj Chopra', 'Milkha Singh', 'P. T. Usha'],
     a: 0
   },
-
   {
     q: 'Javelin throwలో Olympic gold గెలిచి Indiaకి historic achievement ఇచ్చిన athlete ఎవరు?',
-    options: ['Abhinav Bindra', 'Neeraj Chopra', 'Dhanraj Pillay', 'Sushil Kumar'],
+    options: ['Abhinav Bindra', 'Neeraj Chopra', 'Sushil Kumar', 'Dhanraj Pillay'],
     a: 1
   },
-
   {
     q: 'Indian cinemaలో "Big B" అనే nicknameతో famous అయిన actor ఎవరు?',
     options: ['Aamir Khan', 'Amitabh Bachchan', 'Rajinikanth', 'Mammootty'],
     a: 1
   },
-
   {
     q: 'Indian playback singingలో "Nightingale of India"గా popularly known అయిన singer ఎవరు?',
     options: ['Lata Mangeshkar', 'Shreya Ghoshal', 'Asha Bhosle', 'Sunidhi Chauhan'],
     a: 0
   },
-
   {
     q: 'Cricketలో "Master Blaster" అనే nicknameతో famous అయిన Indian player ఎవరు?',
     options: ['Virat Kohli', 'MS Dhoni', 'Sachin Tendulkar', 'Rahul Dravid'],
     a: 2
   },
-
   {
     q: '"Captain Cool" అనే nicknameతో Indian cricketలో famous అయిన player ఎవరు?',
     options: ['MS Dhoni', 'Rohit Sharma', 'Virat Kohli', 'Kapil Dev'],
     a: 0
   },
-
   {
-    q: 'Indiaలో "City of Lakes" అనే nicknameతో commonly associated అయిన city ఏది?',
-    options: ['Udaipur', 'Chennai', 'Hyderabad', 'Kochi'],
-    a: 0
+    q: 'Chessలో world championగా Indiaకి historic achievement ఇచ్చిన legendary player ఎవరు?',
+    options: ['Gukesh', 'Viswanathan Anand', 'Praggnanandhaa', 'Pentala Harikrishna'],
+    a: 1
+  },
+  {
+    q: 'Indian cinemaకి "Father of Indian Cinema"గా commonly called అయ్యే వ్యక్తి ఎవరు?',
+    options: ['Satyajit Ray', 'Dadasaheb Phalke', 'Raj Kapoor', 'Guru Dutt'],
+    a: 1
+  },
+  {
+    q: '"Iron Man of India" అనే titleతో famous అయిన leader ఎవరు?',
+    options: ['Bhagat Singh', 'Sardar Vallabhbhai Patel', 'Subhas Chandra Bose', 'Jawaharlal Nehru'],
+    a: 1
   },
 
   {
-    q: 'ఒక famous Indian fort Hyderabadకి దగ్గరగా ఉంది, మరియు Qutb Shahi dynastyతో associated. అది ఏది?',
-    options: ['Golconda Fort', 'Red Fort', 'Agra Fort', 'Mehrangarh Fort'],
+    q: 'Indiaలో colourful powders ఒకరిపై ఒకరు వేసుకునే festival ఏది?',
+    options: ['Diwali', 'Holi', 'Dussehra', 'Pongal'],
+    a: 1
+  },
+  {
+    q: 'Lights festivalగా famous అయిన Indian festival ఏది?',
+    options: ['Holi', 'Diwali', 'Onam', 'Baisakhi'],
+    a: 1
+  },
+  {
+    q: 'Keralaలో boat races మరియు traditional celebrationsతో famous అయిన festival ఏది?',
+    options: ['Pongal', 'Onam', 'Bihu', 'Lohri'],
+    a: 1
+  },
+  {
+    q: '"Palace of Winds" అని కూడా పిలిచే Rajasthan monument ఏది?',
+    options: ['Hawa Mahal', 'Amer Fort', 'Jal Mahal', 'City Palace'],
     a: 0
   },
-
   {
-    q: 'Mumbaiలో Bollywood film industryకి సంబంధించిన areaగా worldwide famous అయిన పేరు ఏది?',
-    options: ['Bandra', 'Andheri', 'Film City', 'Colaba'],
+    q: 'Hyderabadకి royal historyతో strongly associated అయిన palace ఏది?',
+    options: ['Falaknuma Palace', 'Mysore Palace', 'Lake Palace', 'Umaid Bhawan'],
+    a: 0
+  },
+  {
+    q: 'Mumbaiని Indian cinemaతో connect చేస్తే commonly ఉపయోగించే industry name ఏది?',
+    options: ['Tollywood', 'Bollywood', 'Kollywood', 'Sandalwood'],
+    a: 1
+  },
+  {
+    q: 'Hyderabadలో Telugu film industryకి commonly ఉపయోగించే పేరు ఏది?',
+    options: ['Bollywood', 'Kollywood', 'Tollywood', 'Sandalwood'],
     a: 2
   },
+  {
+    q: '"Flying Sikh" అని famous అయిన Indian athlete ఎవరు?',
+    options: ['Milkha Singh', 'Kapil Dev', 'Dhyan Chand', 'Anil Kumble'],
+    a: 0
+  },
+  {
+    q: '"The Wall" అనే nicknameతో famous అయిన Indian cricketer ఎవరు?',
+    options: ['Rahul Dravid', 'Sunil Gavaskar', 'VVS Laxman', 'Anil Kumble'],
+    a: 0
+  },
+  {
+    q: '"King Kohli" అని fans popularly పిలిచే cricketer ఎవరు?',
+    options: ['Rohit Sharma', 'Virat Kohli', 'Yuvraj Singh', 'Shikhar Dhawan'],
+    a: 1
+  },
 
   {
-    q: '"Baahubali"లో Bhallaladeva పాత్రను చేసిన actor ఎవరు?',
-    options: ['Prabhas', 'Rana Daggubati', 'Nassar', 'Sathyaraj'],
+    q: 'ఒక movieలో hero మనిషి కాదు. తన deathకి revenge తీసుకోవడానికి తిరిగి వస్తాడు. ఆ movie ఏది?',
+    options: ['Eega', 'Anji', 'Yamadonga', 'Robo'],
+    a: 0
+  },
+  {
+    q: 'ఒక failed cricketer తన కొడుకు కోసం తన old dreamని మళ్లీ pursue చేస్తాడు. Movie ఏది?',
+    options: ['Majili', 'Jersey', 'Sye', 'Dear Comrade'],
+    a: 1
+  },
+  {
+    q: 'ఒక familyలో three generations ఒకే storyలో connect అవుతాయి. Telugu movie ఏది?',
+    options: ['Manam', 'Bommarillu', 'Athadu', 'Jalsa'],
+    a: 0
+  },
+  {
+    q: 'ఒక father తన sonని చాలా control చేస్తాడు; son తన own life decisions తీసుకోవాలని ప్రయత్నిస్తాడు. Movie ఏది?',
+    options: ['Bommarillu', 'Orange', 'Kushi', 'Happy Days'],
+    a: 0
+  },
+  {
+    q: 'ఒక taxi driverకి అతని taxi సాధారణ taxi కాదు. ఈ movie ఏది?',
+    options: ['Taxiwala', 'Agent', 'Karthikeya', 'Goodachari'],
+    a: 0
+  },
+  {
+    q: 'ఒక archaeology student ancient mysteryని solve చేయడానికి ప్రయత్నిస్తాడు. Movie ఏది?',
+    options: ['Karthikeya', 'Evaru', 'Goodachari', 'HIT'],
+    a: 0
+  },
+  {
+    q: 'ఒక villageలో mysterious deaths జరుగుతాయి; వాటి వెనుక supernatural reason ఉందా అనే mystery. Movie ఏది?',
+    options: ['Virupaksha', 'Karthikeya', 'Masooda', 'Anukokunda Oka Roju'],
+    a: 0
+  },
+  {
+    q: 'ఒక murder caseలో ఎవరు నిజం చెబుతున్నారు, ఎవరు అబద్ధం చెబుతున్నారు అనేదే main puzzle. Movie ఏది?',
+    options: ['Evaru', 'Kshanam', 'HIT', 'Goodachari'],
+    a: 0
+  },
+  {
+    q: 'ఒక undercover police officer తన identity దాచుకుని criminal networkలోకి వెళ్తాడు. Movie ఏది?',
+    options: ['Pokiri', 'Julayi', 'Temper', 'Race Gurram'],
+    a: 0
+  },
+  {
+    q: 'ఒక young man unexpectedగా Chief Minister అవుతాడు. Movie ఏది?',
+    options: ['Leader', 'Bharat Ane Nenu', 'Janatha Garage', 'Maharshi'],
     a: 1
   }
 ];
@@ -262,11 +317,9 @@ function publicState(roomId, room) {
 }
 
 function sendQuestion(roomId, room) {
-
   const q = room.questions[room.index];
 
   room.phase = 'question';
-
   room.questionEndsAt =
     Date.now() + QUESTION_TIME * 1000;
 
@@ -287,19 +340,16 @@ function sendQuestion(roomId, room) {
 
   clearTimeout(room.timer);
 
-  room.timer = setTimeout(() => {
-
-    finishQuestion(roomId);
-
-  }, QUESTION_TIME * 1000 + 150);
+  room.timer = setTimeout(
+    () => finishQuestion(roomId),
+    QUESTION_TIME * 1000 + 150
+  );
 }
 
 function finishQuestion(roomId) {
-
   const room = rooms.get(roomId);
 
   if (!room || !room.started) return;
-
   if (room.phase !== 'question') return;
 
   room.phase = 'reveal';
@@ -311,30 +361,24 @@ function finishQuestion(roomId) {
   const correctPlayers = [];
 
   for (const [playerId, choice] of room.answers.entries()) {
-
     if (choice === q.a) {
-
       const player =
         room.players.find(p => p.id === playerId);
 
       if (player) {
-
         player.score += 1;
 
         correctPlayers.push({
           id: player.id,
           name: player.name
         });
-
       }
     }
   }
 
   /*
-    IMPORTANT:
-    Answer is NOT revealed immediately.
-
-    First 5-second suspense countdown.
+    Nobody sees the correct answer yet.
+    First: 5 second reveal countdown.
   */
 
   let seconds = REVEAL_TIME;
@@ -347,11 +391,9 @@ function finishQuestion(roomId) {
   clearInterval(room.revealInterval);
 
   room.revealInterval = setInterval(() => {
-
-    seconds -= 1;
+    seconds--;
 
     if (seconds > 0) {
-
       io.to(roomId).emit('revealCountdown', {
         seconds,
         correct: q.a
@@ -365,33 +407,25 @@ function finishQuestion(roomId) {
 
     io.to(roomId).emit('answerReveal', {
       correct: q.a,
-
-      answers:
-        Object.fromEntries(room.answers),
-
+      answers: Object.fromEntries(room.answers),
       correctPlayers,
-
-      players:
-        room.players.map(p => ({
-          id: p.id,
-          name: p.name,
-          score: p.score
-        }))
+      players: room.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        score: p.score
+      }))
     });
 
     /*
-      Give players time to see the result
-      before moving to next question.
+      Keep result visible for 2.5 seconds.
     */
 
     room.revealTimer = setTimeout(() => {
-
       const r = rooms.get(roomId);
 
       if (!r || !r.started) return;
 
       if (r.index >= QUESTIONS_PER_GAME - 1) {
-
         r.started = false;
         r.phase = 'finished';
         r.questionEndsAt = null;
@@ -418,12 +452,9 @@ function finishQuestion(roomId) {
   }, 1000);
 }
 
-function startNewGame(room) {
-
+function startNewGame(roomId, room) {
   room.started = true;
-
   room.index = 0;
-
   room.phase = 'question';
 
   room.questions =
@@ -438,25 +469,15 @@ function startNewGame(room) {
 
   room.answers = new Map();
 
-  sendQuestion(
-    [...rooms.entries()]
-      .find(([id, r]) => r === room)?.[0],
-    room
-  );
+  sendQuestion(roomId, room);
 }
 
 io.on('connection', socket => {
 
-  /*
-    CREATE ROOM
-  */
-
   socket.on('createRoom', ({ name }) => {
-
     const roomId = makeRoomId();
 
     const room = {
-
       hostId: socket.id,
 
       players: [
@@ -466,27 +487,21 @@ io.on('connection', socket => {
             (name || 'Player 1')
               .trim()
               .slice(0, 18),
-
           score: 0
         }
       ],
 
       questions: [],
-
       index: -1,
-
       answers: new Map(),
 
       started: false,
-
       phase: 'lobby',
 
       questionEndsAt: null,
 
       timer: null,
-
       revealInterval: null,
-
       revealTimer: null
     };
 
@@ -495,7 +510,6 @@ io.on('connection', socket => {
     socket.join(roomId);
 
     socket.data.roomId = roomId;
-
     socket.data.role = 'player';
 
     socket.emit('roomCreated', {
@@ -509,16 +523,7 @@ io.on('connection', socket => {
     );
   });
 
-
-  /*
-    JOIN ROOM
-
-    Minimum 2
-    Maximum 4
-  */
-
   socket.on('joinRoom', ({ roomId, name }) => {
-
     roomId =
       String(roomId || '')
         .trim()
@@ -527,7 +532,6 @@ io.on('connection', socket => {
     const room = rooms.get(roomId);
 
     if (!room) {
-
       return socket.emit(
         'errorMsg',
         'Room code correct ga enter cheyyi.'
@@ -535,7 +539,6 @@ io.on('connection', socket => {
     }
 
     if (room.started) {
-
       return socket.emit(
         'errorMsg',
         'Game already started. New room create cheyyandi.'
@@ -543,7 +546,6 @@ io.on('connection', socket => {
     }
 
     if (room.players.length >= 4) {
-
       return socket.emit(
         'errorMsg',
         'Ee room lo already 4 players unnaru.'
@@ -551,7 +553,6 @@ io.on('connection', socket => {
     }
 
     room.players.push({
-
       id: socket.id,
 
       name:
@@ -565,7 +566,6 @@ io.on('connection', socket => {
     socket.join(roomId);
 
     socket.data.roomId = roomId;
-
     socket.data.role = 'player';
 
     socket.emit('joinedRoom', {
@@ -579,13 +579,7 @@ io.on('connection', socket => {
     );
   });
 
-
-  /*
-    TV SCREEN
-  */
-
   socket.on('joinTV', ({ roomId }) => {
-
     roomId =
       String(roomId || '')
         .trim()
@@ -594,7 +588,6 @@ io.on('connection', socket => {
     const room = rooms.get(roomId);
 
     if (!room) {
-
       return socket.emit(
         'errorMsg',
         'Room not found.'
@@ -604,7 +597,6 @@ io.on('connection', socket => {
     socket.join(roomId);
 
     socket.data.roomId = roomId;
-
     socket.data.role = 'tv';
 
     socket.emit('tvJoined', {
@@ -616,58 +608,33 @@ io.on('connection', socket => {
       publicState(roomId, room)
     );
 
-    /*
-      If TV joins after game has already started,
-      send current question.
-    */
-
     if (
       room.index >= 0 &&
       room.started &&
       room.phase === 'question'
     ) {
-
       const q =
         room.questions[room.index];
 
       socket.emit('question', {
-
         index: room.index,
-
         total: QUESTIONS_PER_GAME,
-
         q: q.q,
-
         options: q.options,
-
-        endsAt:
-          room.questionEndsAt
+        endsAt: room.questionEndsAt
       });
     }
   });
 
-
-  /*
-    START GAME
-
-    2 players minimum
-    4 players maximum
-  */
-
   socket.on('startGame', () => {
-
-    const roomId =
-      socket.data.roomId;
-
-    const room =
-      rooms.get(roomId);
+    const roomId = socket.data.roomId;
+    const room = rooms.get(roomId);
 
     if (!room) return;
 
     if (room.hostId !== socket.id) return;
 
     if (room.players.length < 2) {
-
       return socket.emit(
         'errorMsg',
         'Game start avvalante minimum 2 players kavali.'
@@ -675,32 +642,18 @@ io.on('connection', socket => {
     }
 
     if (room.players.length > 4) return;
-
     if (room.started) return;
 
-    startNewGame(room);
-
+    startNewGame(roomId, room);
   });
 
-
-  /*
-    PLAYER ANSWER
-  */
-
   socket.on('answer', ({ choice }) => {
-
-    const roomId =
-      socket.data.roomId;
-
-    const room =
-      rooms.get(roomId);
+    const roomId = socket.data.roomId;
+    const room = rooms.get(roomId);
 
     if (!room) return;
-
     if (!room.started) return;
-
     if (room.phase !== 'question') return;
-
     if (socket.data.role !== 'player') return;
 
     if (
@@ -714,16 +667,11 @@ io.on('connection', socket => {
       room.questionEndsAt
     ) return;
 
-    /*
-      Player can answer only once.
-    */
-
     if (
       room.answers.has(socket.id)
     ) return;
 
-    const numericChoice =
-      Number(choice);
+    const numericChoice = Number(choice);
 
     if (
       !Number.isInteger(numericChoice) ||
@@ -739,55 +687,33 @@ io.on('connection', socket => {
     io.to(roomId).emit(
       'answerState',
       {
-        answered:
-          room.answers.size,
-
-        total:
-          room.players.length
+        answered: room.answers.size,
+        total: room.players.length
       }
     );
 
     /*
-      If EVERY player answered,
-      stop 90 sec timer and start
-      5-second reveal countdown.
+      Everyone answered:
+      start reveal immediately.
     */
 
     if (
       room.answers.size ===
       room.players.length
     ) {
-
       clearTimeout(room.timer);
-
       finishQuestion(roomId);
     }
-
   });
 
-
-  /*
-    PLAY AGAIN
-
-    Host can restart after game ends.
-    New 10-question set is shuffled.
-  */
-
   socket.on('restart', () => {
-
-    const roomId =
-      socket.data.roomId;
-
-    const room =
-      rooms.get(roomId);
+    const roomId = socket.data.roomId;
+    const room = rooms.get(roomId);
 
     if (!room) return;
-
-    if (room.hostId !== socket.id)
-      return;
+    if (room.hostId !== socket.id) return;
 
     if (room.players.length < 2) {
-
       return socket.emit(
         'errorMsg',
         'Again play cheyyalante minimum 2 players kavali.'
@@ -795,53 +721,28 @@ io.on('connection', socket => {
     }
 
     clearTimeout(room.timer);
-
     clearTimeout(room.revealTimer);
-
     clearInterval(room.revealInterval);
 
-    startNewGame(room);
-
+    startNewGame(roomId, room);
   });
 
-
-  /*
-    DISCONNECT
-  */
-
   socket.on('disconnect', () => {
-
-    const roomId =
-      socket.data.roomId;
-
-    const room =
-      rooms.get(roomId);
+    const roomId = socket.data.roomId;
+    const room = rooms.get(roomId);
 
     if (!room) return;
 
-    /*
-      TV disconnect అయితే
-      players game disturb cheyyakudadhu.
-    */
-
-    if (socket.data.role === 'tv')
-      return;
+    if (socket.data.role === 'tv') return;
 
     room.players =
       room.players.filter(
         p => p.id !== socket.id
       );
 
-    /*
-      No players left
-    */
-
     if (room.players.length === 0) {
-
       clearTimeout(room.timer);
-
       clearTimeout(room.revealTimer);
-
       clearInterval(room.revealInterval);
 
       rooms.delete(roomId);
@@ -849,40 +750,19 @@ io.on('connection', socket => {
       return;
     }
 
-    /*
-      If a player leaves during game,
-      pause/reset the game.
-    */
-
     if (room.started) {
-
       room.started = false;
-
       room.phase = 'lobby';
-
       room.index = -1;
-
       room.answers = new Map();
-
       room.questionEndsAt = null;
 
       clearTimeout(room.timer);
-
       clearTimeout(room.revealTimer);
-
       clearInterval(room.revealInterval);
-
     }
 
-    /*
-      If host leaves,
-      next player becomes host.
-    */
-
-    if (
-      room.hostId === socket.id
-    ) {
-
+    if (room.hostId === socket.id) {
       room.hostId =
         room.players[0].id;
     }
@@ -900,15 +780,12 @@ io.on('connection', socket => {
 
 });
 
-
 server.listen(
   PORT,
   '0.0.0.0',
   () => {
-
     console.log(
       `The Juggadi Show running on port ${PORT}`
     );
-
   }
 );
