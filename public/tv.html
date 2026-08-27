@@ -1,0 +1,7 @@
+<!doctype html><html lang="te"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>The Juggadi Show — TV</title><link rel="stylesheet" href="/style.css"></head>
+<body class="tvBody"><main class="tvApp">
+<div class="tvHeader"><div class="showLogo tvLogo">THE <span>JUGGADI</span> SHOW</div><div><span id="tvRoom">ROOM</span> • <span id="tvProgress">0/10</span></div></div>
+<div id="tvWaiting" class="tvWaiting">📺 Waiting for the game to start…</div>
+<div id="tvQuestion" class="tvQuestion hidden"><div class="tvQNo" id="tvQNo">QUESTION 1</div><h1 id="tvQ"></h1><div id="tvOptions" class="tvOptions"></div><div class="tvTimer"><div id="tvTimerBar"></div><span id="tvTimerText">90</span></div></div>
+<div id="tvResult" class="hidden tvResult"><div>🏆 GAME OVER</div><h1 id="tvWinner"></h1><div id="tvScores"></div></div>
+</main><script src="/socket.io/socket.io.js"></script><script src="/tv.js"></script></body></html>
