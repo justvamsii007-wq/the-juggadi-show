@@ -588,14 +588,6 @@ function startNewGame(roomId, room) {
 
 io.on('connection', socket => {
 
-  /*
-    CREATE ROOM
-
-    Player creates the room.
-    Host controller will authenticate
-    separately using host passcode.
-  */
-
  /*
   HOST CREATE ROOM
 
@@ -615,7 +607,8 @@ socket.on(
       );
     }
 
-    const roomId = makeRoomId();
+    const roomId =
+      makeRoomId();
 
     const room = {
 
@@ -682,93 +675,101 @@ socket.on(
   }
 );
 
-      const roomId =
-        makeRoomId();
 
-      const room = {
+/*
+  CREATE ROOM
 
-        hostId: socket.id,
+  Player creates the room.
+  Host is NOT a player.
+*/
 
-        players: [
-          {
-            id: socket.id,
+socket.on(
+  'createRoom',
+  ({ name }) => {
 
-            name:
-              (name || 'Player 1')
-                .trim()
-                .slice(0, 18),
+    const roomId =
+      makeRoomId();
 
-            score: 0
-          }
-        ],
+    const room = {
 
-        questions: [],
+      hostId: null,
 
-        index: -1,
+      hostControllerId:
+        null,
 
-        answers:
-          new Map(),
+      players: [
+        {
+          id: socket.id,
 
-        started: false,
+          name:
+            (name || 'Player 1')
+              .trim()
+              .slice(0, 18),
 
-        phase: 'lobby',
+          score: 0,
 
-        questionEndsAt:
-          null,
+          ready: false
+        }
+      ],
 
-        revealCountdown:
-          null,
+      questions: [],
 
-        timer: null,
+      index: -1,
 
-        revealInterval:
-          null,
+      answers:
+        new Map(),
 
-        revealTimer:
-          null,
+      started: false,
 
-        hostControllerId:
-          null
-      };
+      phase: 'lobby',
 
-      rooms.set(
+      questionEndsAt:
+        null,
+
+      revealCountdown:
+        null,
+
+      timer: null,
+
+      revealInterval:
+        null,
+
+      revealTimer:
+        null
+    };
+
+    rooms.set(
+      roomId,
+      room
+    );
+
+    socket.join(roomId);
+
+    socket.data.roomId =
+      roomId;
+
+    socket.data.role =
+      'player';
+
+    socket.emit(
+      'roomCreated',
+      {
+        roomId,
+
+        playerId:
+          socket.id
+      }
+    );
+
+    io.to(roomId).emit(
+      'state',
+      publicState(
         roomId,
         room
-      );
-
-      socket.join(roomId);
-
-      socket.data.roomId =
-        roomId;
-
-      socket.data.role =
-        'player';
-
-      socket.emit(
-        'roomCreated',
-        {
-          roomId,
-          playerId:
-            socket.id
-        }
-      );
-
-      io.to(roomId).emit(
-        'state',
-        publicState(
-          roomId,
-          room
-        )
-      );
-    }
-  );
-
-
-  /*
-    JOIN PLAYER
-
-    2–4 players.
-  */
+      )
+    );
+  }
+);
 
 /*
   JOIN PLAYER
