@@ -329,12 +329,12 @@ function publicState(roomId, room) {
     roomId,
     hostId: room.hostId,
 
-    players: room.players.map(p => ({
-      id: p.id,
-      name: p.name,
-      score: p.score
-    })),
-
+   players: room.players.map(p => ({
+  id: p.id,
+  name: p.name,
+  score: p.score,
+  ready: !!p.ready
+})),
     index: room.index,
     total: QUESTIONS_PER_GAME,
 
@@ -770,87 +770,156 @@ socket.on(
     2–4 players.
   */
 
-  socket.on(
-    'joinRoom',
-    ({ roomId, name }) => {
+/*
+  JOIN PLAYER
 
-      roomId =
-        String(roomId || '')
-          .trim()
-          .toUpperCase();
+  Players join the room.
+  Host is NOT a player.
 
-      const room =
-        rooms.get(roomId);
+  Players must click READY.
+*/
 
-      if (!room) {
+socket.on(
+  'joinRoom',
+  ({ roomId, name }) => {
 
-        return socket.emit(
-          'errorMsg',
-          'Room code correct ga enter cheyyi.'
-        );
-      }
+    roomId =
+      String(roomId || '')
+        .trim()
+        .toUpperCase();
 
-      if (room.started) {
+    const playerName =
+      String(name || '')
+        .trim()
+        .slice(0, 18);
 
-        return socket.emit(
-          'errorMsg',
-          'Game already started. New room create cheyyandi.'
-        );
-      }
+    if (!playerName) {
 
-      if (
-        room.players.length >= 4
-      ) {
-
-        return socket.emit(
-          'errorMsg',
-          'Ee room lo already 4 players unnaru.'
-        );
-      }
-
-      room.players.push({
-
-        id: socket.id,
-
-        name:
-          (
-            name ||
-            `Player ${room.players.length + 1}`
-          )
-            .trim()
-            .slice(0, 18),
-
-        score: 0
-      });
-
-      socket.join(roomId);
-
-      socket.data.roomId =
-        roomId;
-
-      socket.data.role =
-        'player';
-
-      socket.emit(
-        'joinedRoom',
-        {
-          roomId,
-          playerId:
-            socket.id
-        }
-      );
-
-      io.to(roomId).emit(
-        'state',
-        publicState(
-          roomId,
-          room
-        )
+      return socket.emit(
+        'errorMsg',
+        'Mundhu nee name enter cheyyi.'
       );
     }
-  );
 
+    const room =
+      rooms.get(roomId);
 
+    if (!room) {
+
+      return socket.emit(
+        'errorMsg',
+        'Room code correct ga enter cheyyi.'
+      );
+    }
+
+    if (room.started) {
+
+      return socket.emit(
+        'errorMsg',
+        'Game already started.'
+      );
+    }
+
+    if (room.players.length >= 4) {
+
+      return socket.emit(
+        'errorMsg',
+        'Ee room lo already 4 players unnaru.'
+      );
+    }
+
+    if (
+      room.players.some(
+        p => p.id === socket.id
+      )
+    ) {
+      return;
+    }
+
+    room.players.push({
+
+      id: socket.id,
+
+      name:
+        playerName ||
+        `Player ${room.players.length + 1}`,
+
+      score: 0,
+
+      ready: false
+    });
+
+    socket.join(roomId);
+
+    socket.data.roomId =
+      roomId;
+
+    socket.data.role =
+      'player';
+
+    socket.emit(
+      'joinedRoom',
+      {
+        roomId,
+        playerId:
+          socket.id
+      }
+    );
+
+    io.to(roomId).emit(
+      'state',
+      publicState(
+        roomId,
+        room
+      )
+    );
+  }
+);
+/*
+  PLAYER READY
+
+  Player can mark himself READY.
+  Host alone can start the game.
+*/
+
+socket.on(
+  'playerReady',
+  () => {
+
+    const roomId =
+      socket.data.roomId;
+
+    const room =
+      rooms.get(roomId);
+
+    if (!room) return;
+
+    if (
+      socket.data.role !== 'player'
+    ) return;
+
+    if (room.started)
+      return;
+
+    const player =
+      room.players.find(
+        p => p.id === socket.id
+      );
+
+    if (!player)
+      return;
+
+    player.ready = true;
+
+    io.to(roomId).emit(
+      'state',
+      publicState(
+        roomId,
+        room
+      )
+    );
+  }
+);
   /*
     HOST AUTHENTICATION
 
