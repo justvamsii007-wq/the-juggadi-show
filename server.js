@@ -596,9 +596,91 @@ io.on('connection', socket => {
     separately using host passcode.
   */
 
-  socket.on(
-    'createRoom',
-    ({ name }) => {
+ /*
+  HOST CREATE ROOM
+
+  Host creates the room.
+  Host is NOT a player.
+*/
+
+socket.on(
+  'hostCreateRoom',
+  ({ passcode }) => {
+
+    if (!verifyHostPasscode(passcode)) {
+
+      return socket.emit(
+        'hostAuthFailed',
+        'Wrong host passcode.'
+      );
+    }
+
+    const roomId = makeRoomId();
+
+    const room = {
+
+      hostId: null,
+
+      hostControllerId:
+        socket.id,
+
+      players: [],
+
+      questions: [],
+
+      index: -1,
+
+      answers:
+        new Map(),
+
+      started: false,
+
+      phase: 'lobby',
+
+      questionEndsAt:
+        null,
+
+      revealCountdown:
+        null,
+
+      timer: null,
+
+      revealInterval:
+        null,
+
+      revealTimer:
+        null
+    };
+
+    rooms.set(
+      roomId,
+      room
+    );
+
+    socket.join(roomId);
+
+    socket.data.roomId =
+      roomId;
+
+    socket.data.role =
+      'host';
+
+    socket.emit(
+      'hostRoomCreated',
+      {
+        roomId
+      }
+    );
+
+    socket.emit(
+      'state',
+      publicState(
+        roomId,
+        room
+      )
+    );
+  }
+);
 
       const roomId =
         makeRoomId();
