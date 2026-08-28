@@ -5,43 +5,33 @@ const $ = id => document.getElementById(id);
 let roomId = '';
 let authenticated = false;
 let gameState = null;
-let countdownTimer = null;
 
 
 // ===============================
-// HOST LOGIN
+// CREATE ROOM
 // ===============================
 
 $('loginBtn').onclick = () => {
-
-  const room = $('roomInput')
-    .value
-    .trim()
-    .toUpperCase();
 
   const passcode =
     $('passInput').value.trim();
 
   $('loginMessage').textContent = '';
 
-  if (room.length !== 4) {
-    $('loginMessage').textContent =
-      '4-letter room code enter cheyyi.';
-    return;
-  }
-
   if (!passcode) {
+
     $('loginMessage').textContent =
       'Host passcode enter cheyyi.';
+
     return;
   }
 
-  roomId = room;
-
-  socket.emit('hostJoin', {
-    roomId,
-    passcode
-  });
+  socket.emit(
+    'hostCreateRoom',
+    {
+      passcode
+    }
+  );
 };
 
 
@@ -50,24 +40,27 @@ $('loginBtn').onclick = () => {
 $('passInput').addEventListener(
   'keydown',
   event => {
+
     if (event.key === 'Enter') {
       $('loginBtn').click();
     }
+
   }
 );
 
 
 // ===============================
-// HOST AUTH SUCCESS
+// ROOM CREATED
 // ===============================
 
 socket.on(
-  'hostAuthenticated',
+  'hostRoomCreated',
   data => {
 
     authenticated = true;
 
-    roomId = data.roomId;
+    roomId =
+      data.roomId;
 
     $('loginCard')
       .classList.add('hidden');
@@ -79,8 +72,9 @@ socket.on(
       roomId;
 
     setStatus(
-      'Host connected. Waiting for players...'
+      'Room created! Waiting for players...'
     );
+
   }
 );
 
@@ -132,35 +126,50 @@ function updatePlayers(state) {
 
   $('players').innerHTML =
     players.map(
-      (player, index) => `
+      player => `
+
         <div class="player">
 
           <span>
-            ${index === 0 ? '👑 ' : ''}
             ${escapeHtml(player.name)}
           </span>
 
           <span class="score">
-            ${player.score} pts
+
+            ${
+              player.ready
+                ? '✅ READY'
+                : '⏳ NOT READY'
+            }
+
           </span>
 
         </div>
+
       `
     ).join('');
+
 
   if (players.length < 2) {
 
     setStatus(
-      `Waiting for players... ${players.length}/2`
+      `Waiting for players... ${players.length}/4`
     );
 
-  } else {
-
-    setStatus(
-      `${players.length} players joined.`
-    );
-
+    return;
   }
+
+
+  const readyPlayers =
+    players.filter(
+      player => player.ready
+    ).length;
+
+
+  setStatus(
+    `${readyPlayers}/${players.length} players READY`
+  );
+
 }
 
 
@@ -177,15 +186,45 @@ function updateControls(state) {
     players.length;
 
 
+  const allReady =
+    count >= 2 &&
+    players.every(
+      player => player.ready
+    );
+
+
+  // =============================
   // LOBBY
+  // =============================
 
   if (!state.started) {
 
     $('startBtn')
       .classList.remove('hidden');
 
+    /*
+      Host can start only when:
+
+      minimum 2 players
+      AND everyone is READY
+    */
+
     $('startBtn').disabled =
-      count < 2;
+      !allReady;
+
+
+    if (allReady) {
+
+      $('startBtn').textContent =
+        '▶️ START GAME';
+
+    } else {
+
+      $('startBtn').textContent =
+        '⏳ WAITING FOR PLAYERS';
+
+    }
+
 
     $('revealBtn')
       .classList.add('hidden');
@@ -206,9 +245,13 @@ function updateControls(state) {
   }
 
 
+  // =============================
   // QUESTION
+  // =============================
 
-  if (state.phase === 'question') {
+  if (
+    state.phase === 'question'
+  ) {
 
     $('startBtn')
       .classList.add('hidden');
@@ -228,15 +271,20 @@ function updateControls(state) {
     $('countdown')
       .classList.add('hidden');
 
-    $('revealBtn').disabled = false;
+    $('revealBtn').disabled =
+      false;
 
     return;
   }
 
 
+  // =============================
   // REVEALING
+  // =============================
 
-  if (state.phase === 'revealing') {
+  if (
+    state.phase === 'revealing'
+  ) {
 
     $('revealBtn')
       .classList.add('hidden');
@@ -254,9 +302,13 @@ function updateControls(state) {
   }
 
 
-  // ANSWER REVEALED
+  // =============================
+  // REVEALED
+  // =============================
 
-  if (state.phase === 'revealed') {
+  if (
+    state.phase === 'revealed'
+  ) {
 
     $('revealBtn')
       .classList.add('hidden');
@@ -267,7 +319,8 @@ function updateControls(state) {
     $('nextBtn')
       .classList.remove('hidden');
 
-    $('nextBtn').disabled = false;
+    $('nextBtn').disabled =
+      false;
 
     $('restartBtn')
       .classList.remove('hidden');
@@ -276,9 +329,13 @@ function updateControls(state) {
   }
 
 
+  // =============================
   // FINISHED
+  // =============================
 
-  if (state.phase === 'finished') {
+  if (
+    state.phase === 'finished'
+  ) {
 
     $('startBtn')
       .classList.add('hidden');
@@ -309,13 +366,15 @@ $('startBtn').onclick = () => {
   if (!authenticated)
     return;
 
-  socket.emit('startGame');
+  socket.emit(
+    'startGame'
+  );
 
 };
 
 
 // ===============================
-// ANSWER COUNT
+// QUESTION
 // ===============================
 
 socket.on(
@@ -334,8 +393,11 @@ socket.on(
     $('question').textContent =
       question.q;
 
+    const totalPlayers =
+      gameState?.players?.length || 2;
+
     $('answerCount').textContent =
-      `0 / ${gameState?.players?.length || 2} answered`;
+      `0 / ${totalPlayers} answered`;
 
     $('hostStatus').textContent =
       'Waiting for players to answer...';
@@ -343,6 +405,10 @@ socket.on(
   }
 );
 
+
+// ===============================
+// ANSWER COUNT
+// ===============================
 
 socket.on(
   'answerState',
@@ -353,6 +419,7 @@ socket.on(
 
     $('answerCount').textContent =
       `${data.answered} / ${data.total} answered`;
+
 
     if (
       data.answered >= data.total
@@ -386,7 +453,8 @@ socket.on(
     $('hostStatus').textContent =
       '⏰ Time up! You can reveal the answer now.';
 
-    $('revealBtn').disabled = false;
+    $('revealBtn').disabled =
+      false;
 
   }
 );
@@ -401,12 +469,15 @@ $('revealBtn').onclick = () => {
   if (!authenticated)
     return;
 
-  $('revealBtn').disabled = true;
+  $('revealBtn').disabled =
+    true;
 
   $('hostStatus').textContent =
     '🔓 Answer revealing...';
 
-  socket.emit('revealAnswer');
+  socket.emit(
+    'revealAnswer'
+  );
 
 };
 
@@ -452,7 +523,8 @@ socket.on(
     $('nextBtn')
       .classList.remove('hidden');
 
-    $('nextBtn').disabled = false;
+    $('nextBtn').disabled =
+      false;
 
     $('restartBtn')
       .classList.remove('hidden');
@@ -460,9 +532,6 @@ socket.on(
     $('hostStatus').textContent =
       '✅ Answer revealed. Host decides when to continue.';
 
-    /*
-      Update scoreboard immediately.
-    */
 
     if (data.players) {
 
@@ -485,7 +554,8 @@ $('nextBtn').onclick = () => {
   if (!authenticated)
     return;
 
-  $('nextBtn').disabled = true;
+  $('nextBtn').disabled =
+    true;
 
   $('hostStatus').textContent =
     'Loading next question...';
@@ -528,25 +598,38 @@ $('restartBtn').onclick = () => {
 function renderScores(players) {
 
   $('players').innerHTML =
-    players
+    [...players]
       .sort(
         (a, b) =>
           b.score - a.score
       )
       .map(
         (player, index) => `
+
           <div class="player">
 
             <span>
-              ${index === 0 ? '🏆 ' : ''}
-              ${escapeHtml(player.name)}
+
+              ${
+                index === 0
+                  ? '🏆 '
+                  : ''
+              }
+
+              ${escapeHtml(
+                player.name
+              )}
+
             </span>
 
             <span class="score">
+
               ${player.score} pts
+
             </span>
 
           </div>
+
         `
       )
       .join('');
@@ -580,9 +663,7 @@ socket.on(
   'errorMsg',
   message => {
 
-    if (
-      authenticated
-    ) {
+    if (authenticated) {
 
       $('errorMessage').textContent =
         message;
