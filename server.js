@@ -1547,7 +1547,6 @@ if (!allReady) {
     }
   );
 
-});
 
 server.listen(
   PORT,
