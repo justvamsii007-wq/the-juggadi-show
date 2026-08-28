@@ -193,7 +193,25 @@ function enterLobby() {
   show('lobby');
 
 }
+// ===============================
+// PLAYER READY
+// ===============================
 
+$('readyBtn').onclick = () => {
+
+  $('readyBtn').disabled = true;
+
+  $('readyBtn').textContent =
+    '✅ READY!';
+
+  $('wait').textContent =
+    'Waiting for host to start...';
+
+  socket.emit(
+    'playerReady'
+  );
+
+};
 
 // ===============================
 // GAME STATE
