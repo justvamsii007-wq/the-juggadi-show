@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Juggadi Show — Host</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: #0b0b12;
+      color: white;
+      padding: 24px;
+    }
+
+    .container {
+      width: min(900px, 100%);
+      margin: auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 34px;
+    }
+
+    .header p {
+      color: #aaa;
+    }
+
+    .card {
+      background: #171722;
+      border: 1px solid #29293a;
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 15px;
+      margin: 8px 0 15px;
+      border-radius: 10px;
+      border: 1px solid #3a3a4d;
+      background: #0e0e16;
+      color: white;
+      font-size: 17px;
+      outline: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 15px;
+      border: 0;
+      border-radius: 10px;
+      font-size: 17px;
+      font-weight: bold;
+      cursor: pointer;
+      background: white;
+      color: #111;
+      margin-top: 8px;
+    }
+
+    button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .danger {
+      background: #ff4d5a;
+      color: white;
+    }
+
+    .success {
+      background: #37d67a;
+      color: #07120b;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .room {
+      text-align: center;
+      font-size: 42px;
+      font-weight: 900;
+      letter-spacing: 8px;
+      margin: 15px 0;
+    }
+
+    .status {
+      text-align: center;
+      padding: 12px;
+      border-radius: 10px;
+      background: #10101a;
+      color: #bbb;
+      margin-bottom: 15px;
+    }
+
+    .players {
+      display: grid;
+      gap: 10px;
+    }
+
+    .player {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #10101a;
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 17px;
+    }
+
+    .score {
+      font-weight: bold;
+    }
+
+    .questionBox {
+      background: #10101a;
+      border-radius: 14px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .questionNumber {
+      color: #aaa;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .question {
+      font-size: 24px;
+      font-weight: bold;
+      line-height: 1.4;
+    }
+
+    .answerCount {
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+      margin: 18px 0;
+    }
+
+    .reveal {
+      background: #ffd23f;
+      color: #111;
+      font-size: 21px;
+      min-height: 65px;
+    }
+
+    .next {
+      background: #4f8cff;
+      color: white;
+      font-size: 20px;
+      min-height: 65px;
+    }
+
+    .countdown {
+      text-align: center;
+      font-size: 72px;
+      font-weight: 900;
+      margin: 20px 0;
+    }
+
+    .message {
+      text-align: center;
+      color: #ffb3b8;
+      margin-top: 10px;
+      min-height: 24px;
+    }
+
+    .small {
+      color: #888;
+      font-size: 13px;
+      text-align: center;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <div class="header">
+      <h1>🎬 THE JUGGADI SHOW</h1>
+      <p>Host Controller</p>
+    </div>
+
+    <!-- LOGIN -->
+
+    <div id="loginCard" class="card">
+
+      <h2>🔐 Host Login</h2>
+
+      <label>Room Code</label>
+
+      <input
+        id="roomInput"
+        type="text"
+        maxlength="4"
+        placeholder="Enter room code"
+        autocomplete="off"
+      >
+
+      <label>Host Passcode</label>
+
+      <input
+        id="passInput"
+        type="password"
+        placeholder="Enter host passcode"
+        autocomplete="off"
+      >
+
+      <button id="loginBtn">
+        ENTER HOST MODE
+      </button>
+
+      <div id="loginMessage" class="message"></div>
+
+      <div class="small">
+        Host controls are only available here.
+      </div>
+
+    </div>
+
+
+    <!-- HOST DASHBOARD -->
+
+    <div id="hostCard" class="hidden">
+
+      <div class="card">
+
+        <h2>🎮 Host Control</h2>
+
+        <div class="room" id="roomDisplay">
+          ----
+        </div>
+
+        <div id="gameStatus" class="status">
+          Waiting for players...
+        </div>
+
+      </div>
+
+
+      <!-- PLAYERS -->
+
+      <div class="card">
+
+        <h2>👥 Players</h2>
+
+        <div id="players" class="players">
+        </div>
+
+      </div>
+
+
+      <!-- GAME CONTROL -->
+
+      <div id="controlCard" class="card">
+
+        <h2>🎛️ Game Control</h2>
+
+        <button
+          id="startBtn"
+          class="success"
+          disabled
+        >
+          ▶️ START GAME
+        </button>
+
+        <button
+          id="revealBtn"
+          class="reveal hidden"
+          disabled
+        >
+          🔓 REVEAL ANSWER
+        </button>
+
+        <div
+          id="countdown"
+          class="countdown hidden"
+        >
+          5
+        </div>
+
+        <button
+          id="nextBtn"
+          class="next hidden"
+          disabled
+        >
+          ▶️ NEXT QUESTION
+        </button>
+
+        <button
+          id="restartBtn"
+          class="danger hidden"
+        >
+          🔄 RESTART GAME
+        </button>
+
+      </div>
+
+
+      <!-- CURRENT QUESTION -->
+
+      <div
+        id="questionCard"
+        class="card hidden"
+      >
+
+        <h2>📺 Current Question</h2>
+
+        <div class="questionBox">
+
+          <div
+            id="questionNumber"
+            class="questionNumber"
+          >
+            QUESTION 1
+          </div>
+
+          <div
+            id="question"
+            class="question"
+          >
+          </div>
+
+        </div>
+
+        <div
+          id="answerCount"
+          class="answerCount"
+        >
+          0 / 2 answered
+        </div>
+
+        <div
+          id="hostStatus"
+          class="status"
+        >
+          Waiting for players...
+        </div>
+
+      </div>
+
+
+      <div id="errorMessage" class="message"></div>
+
+    </div>
+
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/host.js"></script>
+
+</body>
+</html>
