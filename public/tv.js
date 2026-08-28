@@ -7,11 +7,23 @@ const $ = id => document.getElementById(id);
 
 let timer = null;
 let revealTimer = null;
+let currentQuestion = null;
 
 $('tvRoom').textContent = roomId || 'ROOM';
 
 if (roomId) {
   socket.emit('joinTV', { roomId });
+}
+
+
+// ===============================
+// SCREEN STATES
+// ===============================
+
+function showWaiting() {
+  $('tvWaiting').classList.remove('hidden');
+  $('tvQuestion').classList.add('hidden');
+  $('tvResult').classList.add('hidden');
 }
 
 function showGame() {
@@ -20,13 +32,13 @@ function showGame() {
   $('tvResult').classList.add('hidden');
 }
 
-function showWaiting() {
-  $('tvWaiting').classList.remove('hidden');
+function showResult() {
+  $('tvWaiting').classList.add('hidden');
   $('tvQuestion').classList.add('hidden');
-  $('tvResult').classList.add('hidden');
+  $('tvResult').classList.remove('hidden');
 }
 
-function clearAllTimers() {
+function clearTimers() {
   clearInterval(timer);
   clearInterval(revealTimer);
 
@@ -34,13 +46,23 @@ function clearAllTimers() {
   revealTimer = null;
 }
 
-/*
-  QUESTION
-*/
+
+// ===============================
+// INITIAL TV STATE
+// ===============================
+
+showWaiting();
+
+
+// ===============================
+// NEW QUESTION
+// ===============================
 
 socket.on('question', q => {
 
-  clearAllTimers();
+  clearTimers();
+
+  currentQuestion = q;
 
   showGame();
 
@@ -50,13 +72,20 @@ socket.on('question', q => {
   $('tvQNo').textContent =
     `QUESTION ${q.index + 1}`;
 
-  $('tvQ').textContent = q.q;
+  $('tvQ').textContent =
+    q.q;
 
   $('tvOptions').innerHTML =
     q.options
-      .map((o, i) => `
-        <div>
-          ${String.fromCharCode(65 + i)}. ${escapeHtml(o)}
+      .map((option, index) => `
+        <div class="tvOption">
+          <span class="optionLetter">
+            ${String.fromCharCode(65 + index)}.
+          </span>
+
+          <span>
+            ${escapeHtml(option)}
+          </span>
         </div>
       `)
       .join('');
@@ -65,250 +94,428 @@ socket.on('question', q => {
 });
 
 
-/*
-  LOBBY / STATE
-*/
+// ===============================
+// GAME STATE
+// ===============================
 
-socket.on('state', s => {
+socket.on('state', state => {
 
-  if (!s.started && s.index < 0) {
+  if (
+    !state.started &&
+    state.index < 0
+  ) {
     showWaiting();
   }
 
 });
 
 
-/*
-  ANSWER COUNT
+// ===============================
+// ANSWER COUNT
+// ===============================
+//
+// TV does NOT show who answered.
+// TV does NOT show correct/wrong.
+// Only host needs that control information.
+//
 
-  TV should NOT reveal who answered
-  or whether their answer is correct.
-*/
-
-socket.on('answerState', d => {
-
-  const answered = d.answered;
-  const total = d.total;
+socket.on('answerState', data => {
 
   /*
-    We intentionally don't show
-    player names or correct/wrong here.
+    Intentionally no visual reveal here.
+    Players remain in suspense.
   */
-
-  if (answered < total) {
-    return;
-  }
 
 });
 
 
-/*
-  5 SECOND REVEAL COUNTDOWN
-*/
+// ===============================
+// TIME UP
+// ===============================
 
-socket.on('revealCountdown', d => {
+socket.on('timeUp', () => {
 
   clearInterval(timer);
-  clearInterval(revealTimer);
 
-  let seconds = Number(d.seconds) || 5;
-
-  showGame();
+  $('tvTimerText').textContent =
+    '0';
 
   /*
-    Keep the question and options hidden
-    during suspense.
+    IMPORTANT:
+    Don't reveal anything automatically.
+
+    Host must press:
+    REVEAL ANSWER
   */
 
-  $('tvQ').textContent =
-    'ANSWER REVEALING...';
+});
 
-  $('tvQNo').textContent =
-    'GET READY!';
 
-  $('tvOptions').innerHTML = `
-    <div class="tvRevealCountdown">
-      ${seconds}
-    </div>
-  `;
+// ===============================
+// HOST STARTED REVEAL
+// ===============================
 
-  revealTimer = setInterval(() => {
+socket.on(
+  'revealCountdown',
+  data => {
 
-    seconds--;
-
-    if (seconds > 0) {
-
-      $('tvOptions').innerHTML = `
-        <div class="tvRevealCountdown">
-          ${seconds}
-        </div>
-      `;
-
-      return;
-    }
-
+    clearInterval(timer);
     clearInterval(revealTimer);
+
+    let seconds =
+      Number(data.seconds) || 5;
+
+    /*
+      Big cinematic countdown.
+    */
+
+    $('tvQNo').textContent =
+      'ANSWER REVEAL';
+
+    $('tvQ').innerHTML = `
+      <div class="tvRevealTitle">
+        GET READY...
+      </div>
+    `;
 
     $('tvOptions').innerHTML = `
       <div class="tvRevealCountdown">
-        🎬
+        ${seconds}
       </div>
     `;
 
-  }, 1000);
+    $('tvTimerText').textContent =
+      '';
 
-});
+    $('tvTimerBar').style.width =
+      '0%';
+
+    revealTimer =
+      setInterval(() => {
+
+        seconds--;
+
+        if (seconds > 0) {
+
+          $('tvOptions').innerHTML = `
+            <div class="tvRevealCountdown">
+              ${seconds}
+            </div>
+          `;
+
+          return;
+        }
+
+        clearInterval(
+          revealTimer
+        );
+
+        revealTimer = null;
+
+      }, 1000);
+
+  }
+);
 
 
-/*
-  FINAL ANSWER REVEAL
+// ===============================
+// FINAL ANSWER REVEAL
+// ===============================
 
-  Big answer + correct player names
-*/
+socket.on(
+  'answerReveal',
+  data => {
 
-socket.on('answerReveal', d => {
+    clearTimers();
 
-  clearInterval(timer);
-  clearInterval(revealTimer);
+    /*
+      Correct answer text comes
+      directly from the server.
+    */
 
-  const optionElements =
-    document.querySelectorAll('.tvOptions div');
+    const correctAnswer =
+      data.correctAnswer ||
+      'Answer';
 
-  /*
-    Highlight correct option
-  */
-
-  optionElements.forEach((element, i) => {
-
-    if (i === Number(d.correct)) {
-      element.classList.add('tvCorrect');
-    }
-
-  });
-
-  /*
-    Correct player names
-  */
-
-  let correctNames = [];
-
-  if (Array.isArray(d.correctPlayers)) {
-
-    correctNames =
-      d.correctPlayers.map(
-        player => player.name
+    const correctLetter =
+      String.fromCharCode(
+        65 + Number(data.correct)
       );
 
-  }
+    /*
+      BIG ANSWER
+    */
 
-  /*
-    Find correct answer text
-  */
+    $('tvQNo').textContent =
+      'CORRECT ANSWER';
 
-  const correctOption =
-    d.correct !== undefined &&
-    optionElements[d.correct]
-      ? optionElements[d.correct].textContent
-      : '';
+    $('tvQ').innerHTML = `
+      <div class="tvAnswerLabel">
+        CORRECT ANSWER
+      </div>
 
-  const answerText =
-    correctOption
-      .replace(/^[A-D]\.\s*/, '')
-      .trim();
-
-  /*
-    Big answer reveal
-  */
-
-  $('tvQNo').textContent =
-    'ANSWER';
-
-  $('tvQ').innerHTML = `
-    <div class="bigAnswer">
-      ${escapeHtml(answerText)}
-    </div>
-  `;
-
-  if (correctNames.length > 0) {
-
-    $('tvOptions').innerHTML = `
-      <div class="correctPlayers">
-        🏆 ${correctNames
-          .map(name => escapeHtml(name))
-          .join(' • ')}
+      <div class="tvBigAnswer">
+        ${correctLetter}. ${escapeHtml(correctAnswer)}
       </div>
     `;
 
-  } else {
 
-    $('tvOptions').innerHTML = `
-      <div class="correctPlayers">
-        ❌ NOBODY GOT IT!
-      </div>
-    `;
+    /*
+      Correct option + all options
+      */
+
+    if (
+      currentQuestion &&
+      currentQuestion.options
+    ) {
+
+      $('tvOptions').innerHTML =
+        currentQuestion.options
+          .map(
+            (option, index) => {
+
+              const isCorrect =
+                index ===
+                Number(data.correct);
+
+              return `
+                <div class="tvOption ${
+                  isCorrect
+                    ? 'tvCorrect'
+                    : 'tvDimmed'
+                }">
+
+                  <span class="optionLetter">
+                    ${String.fromCharCode(
+                      65 + index
+                    )}.
+                  </span>
+
+                  <span>
+                    ${escapeHtml(option)}
+                  </span>
+
+                  ${
+                    isCorrect
+                      ? '<span class="check">✓</span>'
+                      : ''
+                  }
+
+                </div>
+              `;
+            }
+          )
+          .join('');
+
+    }
+
+
+    /*
+      Correct players
+    */
+
+    const correctPlayers =
+      Array.isArray(
+        data.correctPlayers
+      )
+        ? data.correctPlayers
+        : [];
+
+
+    if (
+      correctPlayers.length > 0
+    ) {
+
+      const playerHTML =
+        correctPlayers
+          .map(
+            player => `
+              <div class="correctPlayer">
+
+                <span>
+                  🏆
+                  ${escapeHtml(
+                    player.name
+                  )}
+                </span>
+
+                <strong>
+                  +${player.pointsAdded || 1}
+                </strong>
+
+              </div>
+            `
+          )
+          .join('');
+
+      $('tvOptions').innerHTML += `
+        <div class="correctPlayersTitle">
+          CORRECT PLAYERS
+        </div>
+
+        ${playerHTML}
+      `;
+
+    } else {
+
+      $('tvOptions').innerHTML += `
+        <div class="correctPlayersTitle">
+          ❌ NOBODY GOT IT!
+        </div>
+      `;
+
+    }
+
+
+    /*
+      SCOREBOARD
+    */
+
+    if (
+      Array.isArray(data.players)
+    ) {
+
+      renderScoreboard(
+        data.players
+      );
+
+    }
 
   }
+);
 
-});
 
+// ===============================
+// SCOREBOARD
+// ===============================
 
-/*
-  GAME OVER
-*/
-
-socket.on('gameOver', s => {
-
-  clearAllTimers();
-
-  $('tvQuestion').classList.add('hidden');
-  $('tvWaiting').classList.add('hidden');
-  $('tvResult').classList.remove('hidden');
+function renderScoreboard(players) {
 
   const sorted =
-    [...s.players].sort(
-      (a, b) => b.score - a.score
+    [...players].sort(
+      (a, b) =>
+        b.score - a.score
     );
 
-  const topScore =
-    sorted[0]?.score || 0;
+  /*
+    Reuse tvScores if it exists.
+    This keeps the existing HTML compatible.
+  */
 
-  const winners =
-    sorted.filter(
-      p => p.score === topScore
-    );
-
-  if (winners.length > 1) {
-
-    $('tvWinner').textContent =
-      'IT\'S A TIE!';
-
-  } else {
-
-    $('tvWinner').textContent =
-      `${escapeHtml(winners[0].name)} WINS!`;
-
+  if (!$('tvScores')) {
+    return;
   }
 
   $('tvScores').innerHTML =
     sorted
-      .map((p, i) => `
-        <div>
-          ${i === 0 ? '🏆 ' : ''}
-          ${escapeHtml(p.name)}
-          —
-          <b>${p.score}/${s.total || 10}</b>
-        </div>
-      `)
+      .map(
+        (player, index) => `
+          <div class="tvScoreRow">
+
+            <span>
+              ${
+                index === 0
+                  ? '🏆 '
+                  : ''
+              }
+
+              ${escapeHtml(
+                player.name
+              )}
+            </span>
+
+            <strong>
+              ${player.score} pts
+            </strong>
+
+          </div>
+        `
+      )
       .join('');
 
-});
+}
 
 
-/*
-  TIMER
-*/
+// ===============================
+// GAME OVER
+// ===============================
 
-function startTimer(end) {
+socket.on(
+  'gameOver',
+  state => {
+
+    clearTimers();
+
+    showResult();
+
+    const sorted =
+      [...state.players].sort(
+        (a, b) =>
+          b.score - a.score
+      );
+
+    const topScore =
+      sorted[0]?.score || 0;
+
+    const winners =
+      sorted.filter(
+        player =>
+          player.score ===
+          topScore
+      );
+
+    if (
+      winners.length > 1
+    ) {
+
+      $('tvWinner').textContent =
+        '🤝 IT\'S A TIE!';
+
+    } else {
+
+      $('tvWinner').textContent =
+        `${escapeHtml(
+          winners[0].name
+        )} WINS!`;
+
+    }
+
+    $('tvScores').innerHTML =
+      sorted
+        .map(
+          (player, index) => `
+            <div class="tvScoreRow">
+
+              <span>
+                ${
+                  index === 0
+                    ? '🏆 '
+                    : ''
+                }
+
+                ${escapeHtml(
+                  player.name
+                )}
+              </span>
+
+              <strong>
+                ${player.score}/${state.total || 10}
+              </strong>
+
+            </div>
+          `
+        )
+        .join('');
+
+  }
+);
+
+
+// ===============================
+// 90 SECOND TIMER
+// ===============================
+
+function startTimer(endTime) {
 
   clearInterval(timer);
 
@@ -318,15 +525,27 @@ function startTimer(end) {
       Math.max(
         0,
         Math.ceil(
-          (end - Date.now()) / 1000
+          (
+            endTime -
+            Date.now()
+          ) / 1000
         )
       );
 
     $('tvTimerText').textContent =
       left;
 
+    const percentage =
+      Math.max(
+        0,
+        Math.min(
+          100,
+          (left / 90) * 100
+        )
+      );
+
     $('tvTimerBar').style.width =
-      `${(left / 90) * 100}%`;
+      `${percentage}%`;
 
     if (left <= 0) {
 
@@ -335,11 +554,6 @@ function startTimer(end) {
       $('tvTimerText').textContent =
         '0';
 
-      /*
-        Server will now trigger
-        the 5-second reveal countdown.
-      */
-
     }
 
   };
@@ -347,23 +561,35 @@ function startTimer(end) {
   tick();
 
   timer =
-    setInterval(tick, 250);
+    setInterval(
+      tick,
+      250
+    );
 }
 
 
-/*
-  Safety
-*/
+// ===============================
+// ERROR
+// ===============================
 
-socket.on('errorMsg', message => {
+socket.on(
+  'errorMsg',
+  message => {
 
-  $('tvWaiting').textContent =
-    message;
+    clearTimers();
 
-  showWaiting();
+    $('tvWaiting').textContent =
+      message;
 
-});
+    showWaiting();
 
+  }
+);
+
+
+// ===============================
+// HTML SAFETY
+// ===============================
 
 function escapeHtml(value) {
 
