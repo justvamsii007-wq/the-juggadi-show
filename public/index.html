@@ -1,74 +1,326 @@
 <!doctype html>
 <html lang="te">
+
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>The Juggadi Show</title><link rel="stylesheet" href="/style.css">
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"
+  >
+
+  <title>The Juggadi Show</title>
+
+  <link
+    rel="stylesheet"
+    href="/style.css"
+  >
+
 </head>
+
+
 <body>
-  <a
-  href="/host.html"
-  style="
-    display:block;
-    width:100%;
-    max-width:320px;
-    margin:20px auto;
-    padding:14px;
-    text-align:center;
-    border-radius:10px;
-    background:#ffd23f;
-    color:#111;
-    font-weight:800;
-    text-decoration:none;
-    box-sizing:border-box;
-  "
->
-  👑 HOST MODE
-</a>
+
+
 <main class="app">
-<section id="home" class="screen active">
-  <div class="showLogo">THE<br><span>JUGGADI</span><br>SHOW</div>
-  <p class="tag">2 players • 10 questions • 90 seconds</p>
-  <div class="card">
-    <input id="name" maxlength="18" placeholder="నీ పేరు / Your name">
-    <button id="create">🎬 Create Game</button>
-    <div class="or">OR</div>
-    <input id="room" maxlength="4" placeholder="ROOM CODE" class="code">
-    <button id="join" class="secondary">🚪 Join Game</button>
-    <p id="error" class="error"></p>
-  </div>
-</section>
 
-<section id="lobby" class="screen">
-  <div class="top"><span>THE JUGGADI SHOW</span><span id="roomBadge"></span></div>
-  <div class="card center">
-    <div class="small">ROOM CODE</div><div id="bigRoom" class="bigcode">----</div>
-    <p>Second player ee code tho join avvali.</p>
-    <div id="players" class="players"></div>
-    <div class="lobbyActions">
-      <button id="start" disabled>▶ START GAME</button>
-      <button id="tv" class="secondary">📺 OPEN TV SCREEN</button>
+
+  <!-- =========================
+       PLAYER HOME
+  ========================== -->
+
+  <section
+    id="home"
+    class="screen active"
+  >
+
+    <div class="showLogo">
+      THE<br>
+      <span>JUGGADI</span><br>
+      SHOW
     </div>
-    <p id="wait" class="tiny">Waiting for Player 2…</p>
-  </div>
-</section>
 
-<section id="game" class="screen">
-  <div class="top"><span id="progress">1 / 10</span><span id="score">0 pts</span></div>
-  <div class="timer"><span id="timerText">90</span><small>SEC</small></div>
-  <div class="questionCard">
-    <div class="qtag">CHOOSE YOUR ANSWER</div>
-    <h1 id="question">Loading…</h1>
-    <div id="options" class="options"></div>
-    <div id="answerStatus" class="answerStatus"></div>
-  </div>
-</section>
 
-<section id="result" class="screen">
-  <div class="showLogo smallLogo">THE<br><span>JUGGADI</span><br>SHOW</div>
-  <div class="card center"><div id="winner" class="winner"></div><div id="finalPlayers"></div>
-    <button id="again">🔁 PLAY AGAIN</button><button id="homeBtn" class="secondary">🏠 HOME</button>
-  </div>
-</section>
+    <p class="tag">
+      2–4 players • 10 questions • 90 seconds
+    </p>
+
+
+    <div class="card">
+
+
+      <input
+        id="name"
+        maxlength="18"
+        placeholder="నీ పేరు / Your name"
+        autocomplete="off"
+      >
+
+
+      <input
+        id="room"
+        maxlength="4"
+        placeholder="ROOM CODE"
+        class="code"
+        autocomplete="off"
+      >
+
+
+      <button id="join">
+        🚪 JOIN GAME
+      </button>
+
+
+      <p
+        id="error"
+        class="error"
+      ></p>
+
+
+    </div>
+
+
+    <div
+      style="
+        text-align:center;
+        margin-top:20px;
+      "
+    >
+
+      <a
+        href="/host.html"
+        style="
+          color:#aaa;
+          text-decoration:none;
+          font-size:14px;
+        "
+      >
+        👑 Host Mode
+      </a>
+
+    </div>
+
+
+  </section>
+
+
+
+  <!-- =========================
+       PLAYER LOBBY
+  ========================== -->
+
+  <section
+    id="lobby"
+    class="screen"
+  >
+
+
+    <div class="top">
+
+      <span>
+        THE JUGGADI SHOW
+      </span>
+
+      <span id="roomBadge">
+      </span>
+
+    </div>
+
+
+    <div class="card center">
+
+
+      <div class="small">
+        ROOM CODE
+      </div>
+
+
+      <div
+        id="bigRoom"
+        class="bigcode"
+      >
+        ----
+      </div>
+
+
+      <p>
+        Nee friends ee room code tho join avvali.
+      </p>
+
+
+      <div
+        id="players"
+        class="players"
+      >
+      </div>
+
+
+      <!-- PLAYER READY -->
+
+      <div
+        class="lobbyActions"
+      >
+
+        <button
+          id="readyBtn"
+          class="secondary"
+        >
+          ✅ READY
+        </button>
+
+      </div>
+
+
+      <p
+        id="wait"
+        class="tiny"
+      >
+        Waiting for other players...
+      </p>
+
+
+    </div>
+
+
+  </section>
+
+
+
+  <!-- =========================
+       GAME
+  ========================== -->
+
+  <section
+    id="game"
+    class="screen"
+  >
+
+
+    <div class="top">
+
+      <span
+        id="progress"
+      >
+        1 / 10
+      </span>
+
+
+      <span
+        id="score"
+      >
+        0 pts
+      </span>
+
+    </div>
+
+
+    <div class="timer">
+
+      <span
+        id="timerText"
+      >
+        90
+      </span>
+
+      <small>
+        SEC
+      </small>
+
+    </div>
+
+
+    <div class="questionCard">
+
+
+      <div class="qtag">
+        CHOOSE YOUR ANSWER
+      </div>
+
+
+      <h1 id="question">
+        Loading…
+      </h1>
+
+
+      <div
+        id="options"
+        class="options"
+      >
+      </div>
+
+
+      <div
+        id="answerStatus"
+        class="answerStatus"
+      >
+      </div>
+
+
+    </div>
+
+
+  </section>
+
+
+
+  <!-- =========================
+       RESULT
+  ========================== -->
+
+  <section
+    id="result"
+    class="screen"
+  >
+
+
+    <div
+      class="showLogo smallLogo"
+    >
+      THE<br>
+      <span>JUGGADI</span><br>
+      SHOW
+    </div>
+
+
+    <div class="card center">
+
+
+      <div
+        id="winner"
+        class="winner"
+      >
+      </div>
+
+
+      <div
+        id="finalPlayers"
+      >
+      </div>
+
+
+      <button
+        id="homeBtn"
+        class="secondary"
+      >
+        🏠 HOME
+      </button>
+
+
+    </div>
+
+
+  </section>
+
+
 </main>
-<script src="/socket.io/socket.io.js"></script><script src="/app.js"></script>
-</body></html>
+
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script src="/app.js"></script>
+
+
+</body>
+
+</html>
