@@ -1,12 +1,21 @@
 const express = require('express');
 const http = require('http');
 const path = require('path');
+const crypto = require('crypto');
 const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
 const PORT = process.env.PORT || 3000;
+
+// Host passcode:
+// Render Environment Variable lo HOST_PASSCODE_HASH set cheyyachu.
+// Temporary ga default passcode "JUGGADI2026" use chestundi.
+// Later Render lo secure hash set cheddam.
+const HOST_PASSCODE_HASH =
+  process.env.HOST_PASSCODE_HASH || '';
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -61,7 +70,6 @@ const QUESTIONS = [
     options: ['Allu Arjun', 'Nani', 'Ram Charan', 'Vijay Deverakonda'],
     a: 0
   },
-
   {
     q: 'ప్రపంచవ్యాప్తంగా ప్రేమకు symbolగా famous అయిన Agra monument ఏది?',
     options: ['Charminar', 'Taj Mahal', 'Gateway of India', 'India Gate'],
@@ -112,7 +120,6 @@ const QUESTIONS = [
     options: ['Qutub Minar', 'Charminar', 'India Gate', 'Lotus Temple'],
     a: 0
   },
-
   {
     q: 'Indiaకి "Missile Man" of India అని popularly పిలిచే scientist ఎవరు?',
     options: ['C. V. Raman', 'A. P. J. Abdul Kalam', 'Homi Bhabha', 'Vikram Sarabhai'],
@@ -163,7 +170,6 @@ const QUESTIONS = [
     options: ['Bhagat Singh', 'Sardar Vallabhbhai Patel', 'Subhas Chandra Bose', 'Jawaharlal Nehru'],
     a: 1
   },
-
   {
     q: 'Indiaలో colourful powders ఒకరిపై ఒకరు వేసుకునే festival ఏది?',
     options: ['Diwali', 'Holi', 'Dussehra', 'Pongal'],
@@ -214,7 +220,6 @@ const QUESTIONS = [
     options: ['Rohit Sharma', 'Virat Kohli', 'Yuvraj Singh', 'Shikhar Dhawan'],
     a: 1
   },
-
   {
     q: 'ఒక movieలో hero మనిషి కాదు. తన deathకి revenge తీసుకోవడానికి తిరిగి వస్తాడు. ఆ movie ఏది?',
     options: ['Eega', 'Anji', 'Yamadonga', 'Robo'],
@@ -273,12 +278,33 @@ const QUESTIONS_PER_GAME = 10;
 
 const rooms = new Map();
 
+function hashPasscode(passcode) {
+  return crypto
+    .createHash('sha256')
+    .update(String(passcode))
+    .digest('hex');
+}
+
+function verifyHostPasscode(passcode) {
+  if (!passcode) return false;
+
+  // Temporary fallback for today's testing.
+  // Later we'll remove this and use only Render env variable.
+  if (!HOST_PASSCODE_HASH) {
+    return String(passcode) === 'JUGGADI2026';
+  }
+
+  return hashPasscode(passcode) === HOST_PASSCODE_HASH;
+}
+
 function shuffle(array) {
   const arr = [...array];
 
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+
+    [arr[i], arr[j]] =
+      [arr[j], arr[i]];
   }
 
   return arr;
@@ -292,6 +318,7 @@ function makeRoomId() {
       .toString(36)
       .slice(2, 6)
       .toUpperCase();
+
   } while (rooms.has(id));
 
   return id;
@@ -310,28 +337,51 @@ function publicState(roomId, room) {
 
     index: room.index,
     total: QUESTIONS_PER_GAME,
+
     started: room.started,
-    questionEndsAt: room.questionEndsAt,
-    phase: room.phase
+
+    questionEndsAt:
+      room.questionEndsAt,
+
+    phase: room.phase,
+
+    revealCountdown:
+      room.revealCountdown
   };
 }
 
 function sendQuestion(roomId, room) {
-  const q = room.questions[room.index];
+
+  const q =
+    room.questions[room.index];
 
   room.phase = 'question';
+
   room.questionEndsAt =
-    Date.now() + QUESTION_TIME * 1000;
+    Date.now() +
+    QUESTION_TIME * 1000;
 
-  room.answers = new Map();
+  room.answers =
+    new Map();
 
-  io.to(roomId).emit('question', {
-    index: room.index,
-    total: QUESTIONS_PER_GAME,
-    q: q.q,
-    options: q.options,
-    endsAt: room.questionEndsAt
-  });
+  room.revealCountdown = null;
+
+  io.to(roomId).emit(
+    'question',
+    {
+      index: room.index,
+
+      total:
+        QUESTIONS_PER_GAME,
+
+      q: q.q,
+
+      options: q.options,
+
+      endsAt:
+        room.questionEndsAt
+    }
+  );
 
   io.to(roomId).emit(
     'state',
@@ -340,443 +390,997 @@ function sendQuestion(roomId, room) {
 
   clearTimeout(room.timer);
 
-  room.timer = setTimeout(
-    () => finishQuestion(roomId),
-    QUESTION_TIME * 1000 + 150
-  );
+  room.timer =
+    setTimeout(() => {
+
+      /*
+        Time is over.
+
+        IMPORTANT:
+        We do NOT reveal answer automatically.
+
+        Host must click Reveal Answer.
+      */
+
+      room.questionEndsAt = null;
+
+      io.to(roomId).emit(
+        'timeUp'
+      );
+
+      io.to(roomId).emit(
+        'state',
+        publicState(roomId, room)
+      );
+
+    }, QUESTION_TIME * 1000 + 100);
 }
 
-function finishQuestion(roomId) {
-  const room = rooms.get(roomId);
+function revealAnswer(roomId) {
 
-  if (!room || !room.started) return;
-  if (room.phase !== 'question') return;
+  const room =
+    rooms.get(roomId);
 
-  room.phase = 'reveal';
+  if (!room || !room.started)
+    return;
+
+  if (room.phase !== 'question')
+    return;
+
+  room.phase = 'revealing';
 
   clearTimeout(room.timer);
 
-  const q = room.questions[room.index];
+  room.questionEndsAt = null;
+
+  const q =
+    room.questions[room.index];
 
   const correctPlayers = [];
 
-  for (const [playerId, choice] of room.answers.entries()) {
+  for (
+    const [playerId, choice]
+    of room.answers.entries()
+  ) {
+
     if (choice === q.a) {
+
       const player =
-        room.players.find(p => p.id === playerId);
+        room.players.find(
+          p => p.id === playerId
+        );
 
       if (player) {
+
         player.score += 1;
 
         correctPlayers.push({
           id: player.id,
-          name: player.name
+          name: player.name,
+          pointsAdded: 1,
+          totalScore: player.score
         });
+
       }
     }
   }
 
   /*
-    Nobody sees the correct answer yet.
-    First: 5 second reveal countdown.
+    Host clicked Reveal Answer.
+
+    Start 5-second countdown.
   */
 
-  let seconds = REVEAL_TIME;
+  room.revealCountdown =
+    REVEAL_TIME;
 
-  io.to(roomId).emit('revealCountdown', {
-    seconds,
-    correct: q.a
-  });
-
-  clearInterval(room.revealInterval);
-
-  room.revealInterval = setInterval(() => {
-    seconds--;
-
-    if (seconds > 0) {
-      io.to(roomId).emit('revealCountdown', {
-        seconds,
-        correct: q.a
-      });
-
-      return;
+  io.to(roomId).emit(
+    'revealCountdown',
+    {
+      seconds: REVEAL_TIME
     }
+  );
 
-    clearInterval(room.revealInterval);
-    room.revealInterval = null;
+  clearInterval(
+    room.revealInterval
+  );
 
-    io.to(roomId).emit('answerReveal', {
-      correct: q.a,
-      answers: Object.fromEntries(room.answers),
-      correctPlayers,
-      players: room.players.map(p => ({
-        id: p.id,
-        name: p.name,
-        score: p.score
-      }))
-    });
+  room.revealInterval =
+    setInterval(() => {
 
-    /*
-      Keep result visible for 2.5 seconds.
-    */
+      room.revealCountdown -= 1;
 
-    room.revealTimer = setTimeout(() => {
-      const r = rooms.get(roomId);
-
-      if (!r || !r.started) return;
-
-      if (r.index >= QUESTIONS_PER_GAME - 1) {
-        r.started = false;
-        r.phase = 'finished';
-        r.questionEndsAt = null;
+      if (
+        room.revealCountdown > 0
+      ) {
 
         io.to(roomId).emit(
-          'gameOver',
-          publicState(roomId, r)
-        );
-
-        io.to(roomId).emit(
-          'state',
-          publicState(roomId, r)
+          'revealCountdown',
+          {
+            seconds:
+              room.revealCountdown
+          }
         );
 
         return;
       }
 
-      r.index += 1;
+      clearInterval(
+        room.revealInterval
+      );
 
-      sendQuestion(roomId, r);
+      room.revealInterval = null;
 
-    }, 2500);
+      room.phase = 'revealed';
 
-  }, 1000);
+      room.revealCountdown = null;
+
+      io.to(roomId).emit(
+        'answerReveal',
+        {
+          correct: q.a,
+
+          correctAnswer:
+            q.options[q.a],
+
+          correctPlayers,
+
+          answers:
+            Object.fromEntries(
+              room.answers
+            ),
+
+          players:
+            room.players.map(p => ({
+              id: p.id,
+              name: p.name,
+              score: p.score
+            }))
+        }
+      );
+
+      io.to(roomId).emit(
+        'state',
+        publicState(roomId, room)
+      );
+
+    }, 1000);
 }
 
 function startNewGame(roomId, room) {
+
   room.started = true;
+
   room.index = 0;
+
   room.phase = 'question';
 
   room.questions =
-    shuffle(QUESTIONS).slice(
-      0,
-      QUESTIONS_PER_GAME
-    );
+    shuffle(QUESTIONS)
+      .slice(
+        0,
+        QUESTIONS_PER_GAME
+      );
 
-  room.players.forEach(player => {
-    player.score = 0;
-  });
+  room.players.forEach(
+    player => {
+      player.score = 0;
+    }
+  );
 
-  room.answers = new Map();
+  room.answers =
+    new Map();
 
-  sendQuestion(roomId, room);
+  room.revealCountdown =
+    null;
+
+  clearTimeout(room.timer);
+
+  clearTimeout(room.revealTimer);
+
+  clearInterval(room.revealInterval);
+
+  sendQuestion(
+    roomId,
+    room
+  );
 }
 
 io.on('connection', socket => {
 
-  socket.on('createRoom', ({ name }) => {
-    const roomId = makeRoomId();
+  /*
+    CREATE ROOM
 
-    const room = {
-      hostId: socket.id,
+    Player creates the room.
+    Host controller will authenticate
+    separately using host passcode.
+  */
 
-      players: [
+  socket.on(
+    'createRoom',
+    ({ name }) => {
+
+      const roomId =
+        makeRoomId();
+
+      const room = {
+
+        hostId: socket.id,
+
+        players: [
+          {
+            id: socket.id,
+
+            name:
+              (name || 'Player 1')
+                .trim()
+                .slice(0, 18),
+
+            score: 0
+          }
+        ],
+
+        questions: [],
+
+        index: -1,
+
+        answers:
+          new Map(),
+
+        started: false,
+
+        phase: 'lobby',
+
+        questionEndsAt:
+          null,
+
+        revealCountdown:
+          null,
+
+        timer: null,
+
+        revealInterval:
+          null,
+
+        revealTimer:
+          null,
+
+        hostControllerId:
+          null
+      };
+
+      rooms.set(
+        roomId,
+        room
+      );
+
+      socket.join(roomId);
+
+      socket.data.roomId =
+        roomId;
+
+      socket.data.role =
+        'player';
+
+      socket.emit(
+        'roomCreated',
         {
-          id: socket.id,
-          name:
-            (name || 'Player 1')
-              .trim()
-              .slice(0, 18),
-          score: 0
+          roomId,
+          playerId:
+            socket.id
         }
-      ],
+      );
 
-      questions: [],
-      index: -1,
-      answers: new Map(),
-
-      started: false,
-      phase: 'lobby',
-
-      questionEndsAt: null,
-
-      timer: null,
-      revealInterval: null,
-      revealTimer: null
-    };
-
-    rooms.set(roomId, room);
-
-    socket.join(roomId);
-
-    socket.data.roomId = roomId;
-    socket.data.role = 'player';
-
-    socket.emit('roomCreated', {
-      roomId,
-      playerId: socket.id
-    });
-
-    io.to(roomId).emit(
-      'state',
-      publicState(roomId, room)
-    );
-  });
-
-  socket.on('joinRoom', ({ roomId, name }) => {
-    roomId =
-      String(roomId || '')
-        .trim()
-        .toUpperCase();
-
-    const room = rooms.get(roomId);
-
-    if (!room) {
-      return socket.emit(
-        'errorMsg',
-        'Room code correct ga enter cheyyi.'
+      io.to(roomId).emit(
+        'state',
+        publicState(
+          roomId,
+          room
+        )
       );
     }
+  );
 
-    if (room.started) {
-      return socket.emit(
-        'errorMsg',
-        'Game already started. New room create cheyyandi.'
-      );
-    }
 
-    if (room.players.length >= 4) {
-      return socket.emit(
-        'errorMsg',
-        'Ee room lo already 4 players unnaru.'
-      );
-    }
+  /*
+    JOIN PLAYER
 
-    room.players.push({
-      id: socket.id,
+    2–4 players.
+  */
 
-      name:
-        (name || `Player ${room.players.length + 1}`)
+  socket.on(
+    'joinRoom',
+    ({ roomId, name }) => {
+
+      roomId =
+        String(roomId || '')
           .trim()
-          .slice(0, 18),
+          .toUpperCase();
 
-      score: 0
-    });
+      const room =
+        rooms.get(roomId);
 
-    socket.join(roomId);
+      if (!room) {
 
-    socket.data.roomId = roomId;
-    socket.data.role = 'player';
-
-    socket.emit('joinedRoom', {
-      roomId,
-      playerId: socket.id
-    });
-
-    io.to(roomId).emit(
-      'state',
-      publicState(roomId, room)
-    );
-  });
-
-  socket.on('joinTV', ({ roomId }) => {
-    roomId =
-      String(roomId || '')
-        .trim()
-        .toUpperCase();
-
-    const room = rooms.get(roomId);
-
-    if (!room) {
-      return socket.emit(
-        'errorMsg',
-        'Room not found.'
-      );
-    }
-
-    socket.join(roomId);
-
-    socket.data.roomId = roomId;
-    socket.data.role = 'tv';
-
-    socket.emit('tvJoined', {
-      roomId
-    });
-
-    socket.emit(
-      'state',
-      publicState(roomId, room)
-    );
-
-    if (
-      room.index >= 0 &&
-      room.started &&
-      room.phase === 'question'
-    ) {
-      const q =
-        room.questions[room.index];
-
-      socket.emit('question', {
-        index: room.index,
-        total: QUESTIONS_PER_GAME,
-        q: q.q,
-        options: q.options,
-        endsAt: room.questionEndsAt
-      });
-    }
-  });
-
-  socket.on('startGame', () => {
-    const roomId = socket.data.roomId;
-    const room = rooms.get(roomId);
-
-    if (!room) return;
-
-    if (room.hostId !== socket.id) return;
-
-    if (room.players.length < 2) {
-      return socket.emit(
-        'errorMsg',
-        'Game start avvalante minimum 2 players kavali.'
-      );
-    }
-
-    if (room.players.length > 4) return;
-    if (room.started) return;
-
-    startNewGame(roomId, room);
-  });
-
-  socket.on('answer', ({ choice }) => {
-    const roomId = socket.data.roomId;
-    const room = rooms.get(roomId);
-
-    if (!room) return;
-    if (!room.started) return;
-    if (room.phase !== 'question') return;
-    if (socket.data.role !== 'player') return;
-
-    if (
-      !room.players.some(
-        p => p.id === socket.id
-      )
-    ) return;
-
-    if (
-      Date.now() >
-      room.questionEndsAt
-    ) return;
-
-    if (
-      room.answers.has(socket.id)
-    ) return;
-
-    const numericChoice = Number(choice);
-
-    if (
-      !Number.isInteger(numericChoice) ||
-      numericChoice < 0 ||
-      numericChoice > 3
-    ) return;
-
-    room.answers.set(
-      socket.id,
-      numericChoice
-    );
-
-    io.to(roomId).emit(
-      'answerState',
-      {
-        answered: room.answers.size,
-        total: room.players.length
+        return socket.emit(
+          'errorMsg',
+          'Room code correct ga enter cheyyi.'
+        );
       }
-    );
 
-    /*
-      Everyone answered:
-      start reveal immediately.
-    */
+      if (room.started) {
 
-    if (
-      room.answers.size ===
-      room.players.length
-    ) {
-      clearTimeout(room.timer);
-      finishQuestion(roomId);
+        return socket.emit(
+          'errorMsg',
+          'Game already started. New room create cheyyandi.'
+        );
+      }
+
+      if (
+        room.players.length >= 4
+      ) {
+
+        return socket.emit(
+          'errorMsg',
+          'Ee room lo already 4 players unnaru.'
+        );
+      }
+
+      room.players.push({
+
+        id: socket.id,
+
+        name:
+          (
+            name ||
+            `Player ${room.players.length + 1}`
+          )
+            .trim()
+            .slice(0, 18),
+
+        score: 0
+      });
+
+      socket.join(roomId);
+
+      socket.data.roomId =
+        roomId;
+
+      socket.data.role =
+        'player';
+
+      socket.emit(
+        'joinedRoom',
+        {
+          roomId,
+          playerId:
+            socket.id
+        }
+      );
+
+      io.to(roomId).emit(
+        'state',
+        publicState(
+          roomId,
+          room
+        )
+      );
     }
-  });
+  );
 
-  socket.on('restart', () => {
-    const roomId = socket.data.roomId;
-    const room = rooms.get(roomId);
 
-    if (!room) return;
-    if (room.hostId !== socket.id) return;
+  /*
+    HOST AUTHENTICATION
 
-    if (room.players.length < 2) {
-      return socket.emit(
+    Host is NOT a player.
+
+    Host connects separately and enters
+    the secret passcode.
+  */
+
+  socket.on(
+    'hostJoin',
+    ({ roomId, passcode }) => {
+
+      roomId =
+        String(roomId || '')
+          .trim()
+          .toUpperCase();
+
+      const room =
+        rooms.get(roomId);
+
+      if (!room) {
+
+        return socket.emit(
+          'hostAuthFailed',
+          'Room not found.'
+        );
+      }
+
+      if (
+        !verifyHostPasscode(
+          passcode
+        )
+      ) {
+
+        return socket.emit(
+          'hostAuthFailed',
+          'Wrong host passcode.'
+        );
+      }
+
+      /*
+        Only one host controller.
+      */
+
+      if (
+        room.hostControllerId &&
+        room.hostControllerId !== socket.id
+      ) {
+
+        return socket.emit(
+          'hostAuthFailed',
+          'Host controller already connected.'
+        );
+      }
+
+      room.hostControllerId =
+        socket.id;
+
+      socket.join(roomId);
+
+      socket.data.roomId =
+        roomId;
+
+      socket.data.role =
+        'host';
+
+      socket.emit(
+        'hostAuthenticated',
+        {
+          roomId
+        }
+      );
+
+      socket.emit(
+        'state',
+        publicState(
+          roomId,
+          room
+        )
+      );
+    }
+  );
+
+
+  /*
+    TV DISPLAY
+
+    TV is display only.
+    No host controls here.
+  */
+
+  socket.on(
+    'joinTV',
+    ({ roomId }) => {
+
+      roomId =
+        String(roomId || '')
+          .trim()
+          .toUpperCase();
+
+      const room =
+        rooms.get(roomId);
+
+      if (!room) {
+
+        return socket.emit(
+          'errorMsg',
+          'Room not found.'
+        );
+      }
+
+      socket.join(roomId);
+
+      socket.data.roomId =
+        roomId;
+
+      socket.data.role =
+        'tv';
+
+      socket.emit(
+        'tvJoined',
+        {
+          roomId
+        }
+      );
+
+      socket.emit(
+        'state',
+        publicState(
+          roomId,
+          room
+        )
+      );
+
+      if (
+        room.index >= 0 &&
+        room.started &&
+        room.questions.length
+      ) {
+
+        const q =
+          room.questions[
+            room.index
+          ];
+
+        socket.emit(
+          'question',
+          {
+            index:
+              room.index,
+
+            total:
+              QUESTIONS_PER_GAME,
+
+            q: q.q,
+
+            options:
+              q.options,
+
+            endsAt:
+              room.questionEndsAt
+          }
+        );
+      }
+    }
+  );
+
+
+  /*
+    HOST START GAME
+
+    Only authenticated host.
+  */
+
+  socket.on(
+    'startGame',
+    () => {
+
+      const roomId =
+        socket.data.roomId;
+
+      const room =
+        rooms.get(roomId);
+
+      if (!room) return;
+
+      if (
+        socket.data.role !== 'host'
+      ) return;
+
+      if (
+        room.hostControllerId !==
+        socket.id
+      ) return;
+
+      if (
+        room.players.length < 2
+      ) {
+
+        return socket.emit(
+          'errorMsg',
+          'Game start avvalante minimum 2 players kavali.'
+        );
+      }
+
+      if (
+        room.players.length > 4
+      ) return;
+
+      if (room.started)
+        return;
+
+      startNewGame(
+        roomId,
+        room
+      );
+    }
+  );
+
+
+  /*
+    PLAYER ANSWER
+  */
+
+  socket.on(
+    'answer',
+    ({ choice }) => {
+
+      const roomId =
+        socket.data.roomId;
+
+      const room =
+        rooms.get(roomId);
+
+      if (!room) return;
+
+      if (!room.started)
+        return;
+
+      if (
+        room.phase !== 'question'
+      ) return;
+
+      if (
+        socket.data.role !== 'player'
+      ) return;
+
+      if (
+        !room.players.some(
+          p =>
+            p.id === socket.id
+        )
+      ) return;
+
+      if (
+        room.questionEndsAt &&
+        Date.now() >
+          room.questionEndsAt
+      ) return;
+
+      if (
+        room.answers.has(
+          socket.id
+        )
+      ) return;
+
+      const numericChoice =
+        Number(choice);
+
+      if (
+        !Number.isInteger(
+          numericChoice
+        ) ||
+        numericChoice < 0 ||
+        numericChoice > 3
+      ) return;
+
+      room.answers.set(
+        socket.id,
+        numericChoice
+      );
+
+      /*
+        Tell everyone only how many
+        players have answered.
+
+        Never reveal choices.
+      */
+
+      io.to(roomId).emit(
+        'answerState',
+        {
+          answered:
+            room.answers.size,
+
+          total:
+            room.players.length
+        }
+      );
+    }
+  );
+
+
+  /*
+    HOST REVEAL ANSWER
+
+    This is the ONLY place where
+    reveal can begin.
+  */
+
+  socket.on(
+    'revealAnswer',
+    () => {
+
+      const roomId =
+        socket.data.roomId;
+
+      const room =
+        rooms.get(roomId);
+
+      if (!room) return;
+
+      if (
+        socket.data.role !== 'host'
+      ) return;
+
+      if (
+        room.hostControllerId !==
+        socket.id
+      ) return;
+
+      if (
+        !room.started
+      ) return;
+
+      if (
+        room.phase !== 'question'
+      ) return;
+
+      revealAnswer(
+        roomId
+      );
+    }
+  );
+
+
+  /*
+    HOST NEXT QUESTION
+
+    Nothing moves automatically
+    after reveal.
+  */
+
+  socket.on(
+    'nextQuestion',
+    () => {
+
+      const roomId =
+        socket.data.roomId;
+
+      const room =
+        rooms.get(roomId);
+
+      if (!room) return;
+
+      if (
+        socket.data.role !== 'host'
+      ) return;
+
+      if (
+        room.hostControllerId !==
+        socket.id
+      ) return;
+
+      if (
+        !room.started
+      ) return;
+
+      if (
+        room.phase !== 'revealed'
+      ) return;
+
+      if (
+        room.index >=
+        QUESTIONS_PER_GAME - 1
+      ) {
+
+        room.started = false;
+
+        room.phase =
+          'finished';
+
+        room.questionEndsAt =
+          null;
+
+        io.to(roomId).emit(
+          'gameOver',
+          publicState(
+            roomId,
+            room
+          )
+        );
+
+        io.to(roomId).emit(
+          'state',
+          publicState(
+            roomId,
+            room
+          )
+        );
+
+        return;
+      }
+
+      room.index += 1;
+
+      sendQuestion(
+        roomId,
+        room
+      );
+    }
+  );
+
+
+  /*
+    HOST RESTART GAME
+  */
+
+  socket.on(
+    'restart',
+    () => {
+
+      const roomId =
+        socket.data.roomId;
+
+      const room =
+        rooms.get(roomId);
+
+      if (!room) return;
+
+      if (
+        socket.data.role !== 'host'
+      ) return;
+
+      if (
+        room.hostControllerId !==
+        socket.id
+      ) return;
+
+      if (
+        room.players.length < 2
+      ) {
+
+        return socket.emit(
+          'errorMsg',
+          'Again play cheyyalante minimum 2 players kavali.'
+        );
+      }
+
+      clearTimeout(room.timer);
+
+      clearInterval(
+        room.revealInterval
+      );
+
+      clearTimeout(
+        room.revealTimer
+      );
+
+      startNewGame(
+        roomId,
+        room
+      );
+    }
+  );
+
+
+  /*
+    HOST DISCONNECT
+  */
+
+  socket.on(
+    'disconnect',
+    () => {
+
+      const roomId =
+        socket.data.roomId;
+
+      const room =
+        rooms.get(roomId);
+
+      if (!room)
+        return;
+
+      /*
+        TV disconnect:
+        don't disturb game.
+      */
+
+      if (
+        socket.data.role === 'tv'
+      ) {
+        return;
+      }
+
+      /*
+        Host disconnect:
+        players remain,
+        but game controls stop.
+      */
+
+      if (
+        socket.data.role === 'host'
+      ) {
+
+        if (
+          room.hostControllerId ===
+          socket.id
+        ) {
+
+          room.hostControllerId =
+            null;
+
+          io.to(roomId).emit(
+            'hostDisconnected'
+          );
+        }
+
+        return;
+      }
+
+      /*
+        Player disconnect.
+      */
+
+      room.players =
+        room.players.filter(
+          p =>
+            p.id !== socket.id
+        );
+
+      if (
+        room.players.length === 0
+      ) {
+
+        clearTimeout(
+          room.timer
+        );
+
+        clearTimeout(
+          room.revealTimer
+        );
+
+        clearInterval(
+          room.revealInterval
+        );
+
+        rooms.delete(
+          roomId
+        );
+
+        return;
+      }
+
+      /*
+        If player leaves during
+        an active game, stop game safely.
+      */
+
+      if (room.started) {
+
+        room.started = false;
+
+        room.phase =
+          'lobby';
+
+        room.index = -1;
+
+        room.answers =
+          new Map();
+
+        room.questionEndsAt =
+          null;
+
+        clearTimeout(
+          room.timer
+        );
+
+        clearTimeout(
+          room.revealTimer
+        );
+
+        clearInterval(
+          room.revealInterval
+        );
+      }
+
+      io.to(roomId).emit(
         'errorMsg',
-        'Again play cheyyalante minimum 2 players kavali.'
-      );
-    }
-
-    clearTimeout(room.timer);
-    clearTimeout(room.revealTimer);
-    clearInterval(room.revealInterval);
-
-    startNewGame(roomId, room);
-  });
-
-  socket.on('disconnect', () => {
-    const roomId = socket.data.roomId;
-    const room = rooms.get(roomId);
-
-    if (!room) return;
-
-    if (socket.data.role === 'tv') return;
-
-    room.players =
-      room.players.filter(
-        p => p.id !== socket.id
+        'Oka player disconnect ayyadu. Game ni malli start cheyyandi.'
       );
 
-    if (room.players.length === 0) {
-      clearTimeout(room.timer);
-      clearTimeout(room.revealTimer);
-      clearInterval(room.revealInterval);
-
-      rooms.delete(roomId);
-
-      return;
+      io.to(roomId).emit(
+        'state',
+        publicState(
+          roomId,
+          room
+        )
+      );
     }
-
-    if (room.started) {
-      room.started = false;
-      room.phase = 'lobby';
-      room.index = -1;
-      room.answers = new Map();
-      room.questionEndsAt = null;
-
-      clearTimeout(room.timer);
-      clearTimeout(room.revealTimer);
-      clearInterval(room.revealInterval);
-    }
-
-    if (room.hostId === socket.id) {
-      room.hostId =
-        room.players[0].id;
-    }
-
-    io.to(roomId).emit(
-      'errorMsg',
-      'Oka player disconnect ayyadu. Game ni malli start cheyyandi.'
-    );
-
-    io.to(roomId).emit(
-      'state',
-      publicState(roomId, room)
-    );
-  });
+  );
 
 });
 
@@ -784,8 +1388,10 @@ server.listen(
   PORT,
   '0.0.0.0',
   () => {
+
     console.log(
       `The Juggadi Show running on port ${PORT}`
     );
+
   }
 );
