@@ -1117,15 +1117,29 @@ socket.on(
       ) return;
 
       if (
-        room.players.length < 2
-      ) {
+  room.players.length < 2
+) {
 
-        return socket.emit(
-          'errorMsg',
-          'Game start avvalante minimum 2 players kavali.'
-        );
-      }
+  return socket.emit(
+    'errorMsg',
+    'Game start avvalante minimum 2 players kavali.'
+  );
 
+}
+
+const allReady =
+  room.players.every(
+    player => player.ready
+  );
+
+if (!allReady) {
+
+  return socket.emit(
+    'errorMsg',
+    'Players andaroo READY avvali.'
+  );
+
+}
       if (
         room.players.length > 4
       ) return;
